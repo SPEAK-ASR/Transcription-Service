@@ -85,34 +85,7 @@ pip install -r requirements.txt
 3. **Create Tables**:
    The tables should already be created in your Supabase database. If not, you can create them using the SQL editor in Supabase dashboard:
 
-   ```sql
-   -- Audio table
-   CREATE TABLE "Audio" (
-       audio_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-       audio_filename TEXT NOT NULL,
-       google_transcription TEXT,
-       transcription_count INTEGER DEFAULT 0
-   );
-
-   -- Transcriptions table
-   CREATE TABLE "Transcriptions" (
-       trans_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-       audio_id UUID NOT NULL REFERENCES "Audio"(audio_id),
-       transcription TEXT NOT NULL,
-       speaker_gender VARCHAR(10),
-       has_noise BOOLEAN DEFAULT FALSE,
-       is_code_mixed BOOLEAN DEFAULT FALSE,
-       is_speaker_overlapping BOOLEAN DEFAULT FALSE,
-       is_speaker_male BOOLEAN,
-       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-   );
-
-   -- Create index for better query performance
-   CREATE INDEX idx_audio_transcription_count ON "Audio"(transcription_count);
-   CREATE INDEX idx_transcriptions_audio_id ON "Transcriptions"(audio_id);
-   ```
-
-### 3. Google Cloud Storage Setup (Optional)
+### 3. Google Cloud Storage Setup
 
 1. Create a GCS bucket for audio files
 2. Create a service account with Storage Object Viewer permissions
