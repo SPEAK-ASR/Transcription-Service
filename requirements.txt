@@ -1,0 +1,22 @@
+# FastAPI and dependencies
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+
+# Google Cloud Storage
+google-cloud-storage
+
+# Environment management
+python-dotenv
+
+# CSV and file processing
+pandas
+
+# Optional: For production deployment
+gunicorn
