@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_database_session
-from app.schemas import AudioResponse, CSVUploadResult, FilesListResponse
+from app.schemas import AudioResponse, CSVUploadResult, FilesListResponse, AudioComparisonResponse, AudioFileComparisonItem
 from app.services.gcs_service import gcs_service
 from app.services.db_service import AudioService
 
@@ -187,72 +187,92 @@ async def get_all_files_metadata():
 
 
 @router.get(
-    "/files/csv",
-    summary="Download files metadata as CSV",
-    description="Downloads all files metadata as a CSV file"
+    "/compare",
+    response_model=AudioComparisonResponse,
+    summary="Compare audio files between cloud bucket and database",
+    description="Compares audio files in GCS bucket with audio records in database and returns differences"
 )
-async def download_files_metadata_csv():
+async def compare_audio_files(
+    db: AsyncSession = Depends(get_async_database_session)
+):
     """
-    Download all files metadata as a CSV file.
+    Compare audio files between Google Cloud Storage bucket and database.
     
-    This endpoint generates and returns a CSV file containing:
-    - filename: The filename without path
-    - full_path: Complete GCS path
-    - size_bytes: File size in bytes
-    - size_mb: File size in megabytes
-    - content_type: MIME type
-    - created_date: File creation date
-    - updated_date: File last modified date
-    - md5_hash: MD5 hash of the file
-    - is_audio_file: Boolean indicating if it's an audio file
+    This endpoint:
+    1. Gets all audio files from GCS bucket
+    2. Gets all audio records from database 
+    3. Compares them and returns:
+       - Files that exist only in cloud bucket (not in database)
+       - Files that exist only in database (not in cloud bucket)
+       - Summary statistics
     """
     try:
-        # Get all files metadata from GCS
-        files_metadata = await gcs_service.list_all_files()
+        # Get all audio files from GCS bucket
+        logger.info("Fetching audio files from GCS bucket...")
+        gcs_audio_files = await gcs_service.list_all_audio_files()
         
-        # Create CSV content
-        csv_content = io.StringIO()
+        # Get all audio records from database
+        logger.info("Fetching audio records from database...")
+        db_audio_files = await AudioService.get_all_audio_files(db)
         
-        # Write CSV header
-        headers = [
-            'filename', 'full_path', 'size_bytes', 'size_mb', 
-            'content_type', 'created_date', 'updated_date', 
-            'md5_hash', 'is_audio_file'
-        ]
-        csv_content.write(','.join(headers) + '\n')
+        # Create sets of filenames for comparison
+        gcs_filenames = {file['filename'] for file in gcs_audio_files}
+        db_filenames = {audio.audio_filename for audio in db_audio_files}
         
-        # Write data rows
-        for file_metadata in files_metadata:
-            row = [
-                f'"{file_metadata["filename"]}"',
-                f'"{file_metadata["full_path"]}"',
-                str(file_metadata["size_bytes"]),
-                str(file_metadata["size_mb"]),
-                f'"{file_metadata["content_type"]}"',
-                f'"{file_metadata["created_date"]}"',
-                f'"{file_metadata["updated_date"]}"',
-                f'"{file_metadata["md5_hash"]}"',
-                str(file_metadata["is_audio_file"]).lower()
-            ]
-            csv_content.write(','.join(row) + '\n')
+        # Find files that exist only in GCS (not in DB)
+        cloud_only_filenames = gcs_filenames - db_filenames
+        cloud_only_files = []
+        for gcs_file in gcs_audio_files:
+            if gcs_file['filename'] in cloud_only_filenames:
+                cloud_only_files.append(AudioFileComparisonItem(
+                    filename=gcs_file['filename'],
+                    full_path=gcs_file['full_path'],
+                    size_bytes=gcs_file['size_bytes'],
+                    size_mb=gcs_file['size_mb']
+                ))
         
-        # Create response
-        csv_string = csv_content.getvalue()
-        csv_content.close()
+        # Find files that exist only in DB (not in GCS)
+        db_only_filenames = db_filenames - gcs_filenames
+        db_only_files = []
+        for db_audio in db_audio_files:
+            if db_audio.audio_filename in db_only_filenames:
+                db_only_files.append(AudioFileComparisonItem(
+                    filename=db_audio.audio_filename,
+                    audio_id=db_audio.audio_id,
+                    transcription_count=db_audio.transcription_count,
+                    google_transcription=db_audio.google_transcription
+                ))
         
-        # Create a streaming response
-        response = StreamingResponse(
-            io.StringIO(csv_string),
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=gcs_files_metadata.csv"}
+        # Calculate matched files
+        matched_files_count = len(gcs_filenames & db_filenames)
+        
+        # Create summary statistics
+        summary = {
+            "total_gcs_audio_files": len(gcs_audio_files),
+            "total_db_audio_records": len(db_audio_files),
+            "cloud_only_count": len(cloud_only_files),
+            "db_only_count": len(db_only_files),
+            "matched_count": matched_files_count,
+            "gcs_total_size_mb": round(sum(f['size_mb'] for f in gcs_audio_files), 2)
+        }
+        
+        logger.info(
+            f"Audio comparison completed: "
+            f"GCS={len(gcs_audio_files)}, DB={len(db_audio_files)}, "
+            f"Cloud-only={len(cloud_only_files)}, DB-only={len(db_only_files)}, "
+            f"Matched={matched_files_count}"
         )
         
-        logger.info(f"Generated CSV with {len(files_metadata)} file records")
-        return response
+        return AudioComparisonResponse(
+            summary=summary,
+            cloud_only_files=cloud_only_files,
+            db_only_files=db_only_files,
+            matched_files_count=matched_files_count
+        )
         
     except Exception as e:
-        logger.error(f"Error generating files CSV: {e}")
+        logger.error(f"Error comparing audio files: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Internal server error while generating CSV"
+            detail="Internal server error while comparing audio files"
         )
