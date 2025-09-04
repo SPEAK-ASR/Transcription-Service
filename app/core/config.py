@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Annotation settings
     ANNOTATIONS_PER_CLIP: int = 2  # Each clip should be annotated by 2 users
     
+    # Lease system settings
+    AUDIO_LEASE_TIMEOUT_MINUTES: int = 15  # Default 15 minutes
+    MAX_TRANSCRIPTIONS_PER_AUDIO: int = 2  # Default 2 attempts
+
     class Config:
         case_sensitive = True
         env_file = ".env"

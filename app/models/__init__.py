@@ -30,6 +30,7 @@ class Audio(Base):
     audio_filename = Column(Text, nullable=False)
     google_transcription = Column(Text, nullable=True)
     transcription_count = Column(Integer, default=0)
+    leased_until = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
     transcriptions = relationship("Transcriptions", back_populates="audio")

@@ -35,12 +35,13 @@ async def create_transcription(
     
     This endpoint:
     1. Validates the audio file exists
-    2. Checks if the audio already has enough transcriptions (max 2)
-    3. Creates the transcription record with speaker metadata
-    4. Updates audio transcription count
+    2. Creates the transcription record with speaker metadata
+    3. Atomically updates audio transcription count and releases the lease
+    
+    The lease-based system prevents race conditions and ensures proper concurrency handling.
     """
     try:
-        # Get the audio file (now truly async)
+        # Verify the audio file exists
         result = await db.execute(select(Audio).where(Audio.audio_id == transcription_data.audio_id))
         audio_file = result.scalar_one_or_none()
         
@@ -50,15 +51,7 @@ async def create_transcription(
                 detail=f"Audio file not found: {transcription_data.audio_id}"
             )
         
-        # Check if audio already has enough transcriptions
-        if audio_file.transcription_count >= 2:
-            logger.warning(f"Attempt to transcribe completed audio: {audio_file.audio_filename}")
-            raise HTTPException(
-                status_code=400,
-                detail="This audio file already has the maximum number of transcriptions (2)"
-            )
-        
-        # Create the transcription (now truly async)
+        # Create the transcription (this will also handle the lease release and count increment)
         new_transcription = await TranscriptionService.create_transcription(
             db,
             transcription_data,

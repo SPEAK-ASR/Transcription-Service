@@ -6,13 +6,14 @@ import logging
 from typing import Optional, List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, text
 from uuid import UUID
 from io import StringIO
 import pandas as pd
 
 from app.models import Audio, Transcriptions
 from app.schemas import TranscriptionCreate
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class AudioService:
         try:
             result = await db.execute(
                 select(Audio)
-                .where(Audio.transcription_count < 2)
+                .where(Audio.transcription_count < settings.MAX_TRANSCRIPTIONS_PER_AUDIO)
                 .order_by(Audio.transcription_count.asc())
                 .limit(limit)
             )
@@ -41,18 +42,117 @@ class AudioService:
             raise
 
     @staticmethod
-    async def get_random_audio_for_transcription(db: AsyncSession) -> Optional[Audio]:
-        """Get an audio file needing transcription (lowest transcription count)."""
+    async def claim_audio_for_transcription(db: AsyncSession) -> Optional[Audio]:
+        """
+        Safely claim an audio file for transcription processing using lease-based system.
+        
+        This method:
+        1. Finds audio files where transcription_count < MAX_TRANSCRIPTIONS_PER_AUDIO AND (leased_until IS NULL OR leased_until < NOW())
+        2. Orders by transcription_count ASC to prioritize files with fewer attempts
+        3. Locks one row atomically using FOR UPDATE SKIP LOCKED to prevent race conditions
+        4. Updates leased_until to NOW() + AUDIO_LEASE_TIMEOUT_MINUTES
+        5. Returns the claimed audio file details
+        
+        Returns None if no audio file is available for claiming.
+        """
         try:
-            audio_files = await AudioService.get_audio_needing_transcription_prioritized(db=db, limit=1)
-            audio = audio_files[0] if audio_files else None
-            if audio:
-                logger.info(f"Selected audio for transcription: {audio.audio_filename}")
+            # Use a raw SQL query for optimal performance with FOR UPDATE SKIP LOCKED
+            query = text(f"""
+                UPDATE "Audio" 
+                SET leased_until = NOW() + INTERVAL '{settings.AUDIO_LEASE_TIMEOUT_MINUTES} minutes'
+                WHERE audio_id = (
+                    SELECT audio_id 
+                    FROM "Audio" 
+                    WHERE transcription_count < {settings.MAX_TRANSCRIPTIONS_PER_AUDIO}
+                    AND (leased_until IS NULL OR leased_until < NOW())
+                    ORDER BY transcription_count ASC, audio_id
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                )
+                RETURNING audio_id, audio_filename, google_transcription, transcription_count, leased_until;
+            """)
+            
+            result = await db.execute(query)
+            audio_row = result.fetchone()
+            
+            if audio_row:
+                await db.commit()
+                
+                # Convert the row to an Audio object-like structure
+                audio_data = {
+                    'audio_id': audio_row[0],
+                    'audio_filename': audio_row[1], 
+                    'google_transcription': audio_row[2],
+                    'transcription_count': audio_row[3],
+                    'leased_until': audio_row[4]
+                }
+                
+                logger.info(f"Successfully claimed audio for transcription: {audio_data['audio_filename']} (lease until: {audio_data['leased_until']}, timeout: {settings.AUDIO_LEASE_TIMEOUT_MINUTES} minutes)")
+                
+                # Create a minimal Audio-like object for compatibility
+                class ClaimedAudio:
+                    def __init__(self, data):
+                        self.audio_id = data['audio_id']
+                        self.audio_filename = data['audio_filename']
+                        self.google_transcription = data['google_transcription']
+                        self.transcription_count = data['transcription_count']
+                        self.leased_until = data['leased_until']
+                
+                return ClaimedAudio(audio_data)
             else:
-                logger.info("No audio files available for transcription")
-            return audio
+                await db.rollback()
+                logger.info("No audio files available for claiming")
+                return None
+                
         except Exception as e:
-            logger.error(f"Error getting audio for transcription: {e}")
+            await db.rollback()
+            logger.error(f"Error claiming audio for transcription: {e}")
+            raise
+
+    @staticmethod
+    async def get_random_audio_for_transcription(db: AsyncSession) -> Optional[Audio]:
+        """
+        Get an audio file for transcription using the lease-based system.
+        This method replaces the old random selection with safe lease-based claiming.
+        """
+        return await AudioService.claim_audio_for_transcription(db)
+
+    @staticmethod
+    async def release_audio_lease(db: AsyncSession, audio_id: UUID) -> bool:
+        """
+        Release the lease on an audio file by setting leased_until to NOW().
+        This should be called when a transcription is submitted.
+        
+        Args:
+            db: Database session
+            audio_id: UUID of the audio file to release
+            
+        Returns:
+            bool: True if the lease was successfully released, False otherwise
+        """
+        try:
+            query = text("""
+                UPDATE "Audio" 
+                SET leased_until = NOW()
+                WHERE audio_id = :audio_id
+                RETURNING audio_id;
+            """)
+            
+            result = await db.execute(query, {"audio_id": audio_id})
+            updated_row = result.fetchone()
+            
+            if updated_row:
+                await db.commit()
+                logger.info(f"Successfully released lease for audio: {audio_id}")
+                return True
+            else:
+                await db.rollback()
+                logger.warning(f"No audio found with ID: {audio_id}")
+                return False
+                
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error releasing audio lease for {audio_id}: {e}")
             raise
 
     @staticmethod
@@ -131,8 +231,15 @@ class TranscriptionService:
 
     @staticmethod
     async def create_transcription(db: AsyncSession, transcription_data: TranscriptionCreate) -> Transcriptions:
-        """Create a new transcription."""
+        """
+        Create a new transcription record.
+        
+        This method creates the transcription record. The database trigger automatically:
+        1. Increments the transcription_count on the audio record
+        2. Can be extended to release the lease by setting leased_until = NOW()
+        """
         try:
+            # Start a transaction
             new_transcription = Transcriptions(
                 audio_id=transcription_data.audio_id,
                 transcription=transcription_data.transcription,
@@ -143,10 +250,16 @@ class TranscriptionService:
             )
 
             db.add(new_transcription)
+            await db.flush()  # Ensure the transcription is inserted before committing
+            
             await db.commit()
             await db.refresh(new_transcription)
 
-            logger.info(f"Created new transcription: {new_transcription.trans_id}")
+            logger.info(
+                f"Created new transcription: {new_transcription.trans_id} "
+                f"for audio: {transcription_data.audio_id} "
+                f"(transcription_count updated by trigger)"
+            )
             return new_transcription
 
         except Exception as e:
