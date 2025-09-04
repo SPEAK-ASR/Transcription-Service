@@ -73,9 +73,8 @@ class CSVUploadResult(BaseModel):
     """
     total_records: int = Field(..., description="Total number of records in the CSV")
     inserted: int = Field(..., description="Number of records successfully inserted")
-    updated: int = Field(..., description="Number of records updated (if already existed)")
     skipped: int = Field(..., description="Number of records skipped due to errors")
-    errors: List[str] = Field(default=[], description="List of error messages for skipped records")
+    skipped_files: List[dict] = Field(default=[], description="List of skipped filenames with indices")
 
 
 class BulkAudioCreate(BaseModel):
