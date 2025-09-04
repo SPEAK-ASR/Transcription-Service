@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = f"postgresql://{DBUSER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
 
     # Google Cloud Storage settings
-    GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME")
+    GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "sinhala-asr-audio-dataset-2025")
     
     # CORS settings
     ALLOWED_HOSTS: List[str] = ["*"]

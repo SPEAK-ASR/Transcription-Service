@@ -139,6 +139,47 @@ class GCSService:
             logger.error(f"Unexpected error when getting blob metadata: {e}")
             raise
     
+    async def list_all_files(self) -> List[dict]:
+        """
+        List all files in the GCS bucket with their metadata.
+        
+        Returns:
+            List of dictionaries containing file metadata
+        """
+        try:
+            # List all blobs in the bucket
+            blobs = list(self.bucket.list_blobs())
+            
+            files_metadata = []
+            for blob in blobs:
+                # Reload to get updated metadata
+                blob.reload()
+                
+                files_metadata.append({
+                    'filename': blob.name.split('/')[-1],  # Just the filename without path
+                    'full_path': blob.name,  # Full GCS path
+                    'size_bytes': blob.size or 0,
+                    'size_mb': round((blob.size or 0) / (1024 * 1024), 2),
+                    'content_type': blob.content_type or 'unknown',
+                    'created_date': blob.time_created.strftime('%Y-%m-%d %H:%M:%S') if blob.time_created else 'unknown',
+                    'updated_date': blob.updated.strftime('%Y-%m-%d %H:%M:%S') if blob.updated else 'unknown',
+                    'md5_hash': blob.md5_hash or 'unknown',
+                    'is_audio_file': any(blob.name.lower().endswith(fmt) for fmt in settings.SUPPORTED_AUDIO_FORMATS)
+                })
+            
+            # Sort by filename for consistent ordering
+            files_metadata.sort(key=lambda x: x['filename'].lower())
+            
+            logger.info(f"Retrieved metadata for {len(files_metadata)} files from GCS bucket")
+            return files_metadata
+            
+        except GoogleCloudError as e:
+            logger.error(f"GCS error when listing files: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error when listing files: {e}")
+            raise
+
     def _extract_clip_id_from_path(self, gcs_path: str) -> str:
         """
         Extract clip ID from GCS path.

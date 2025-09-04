@@ -92,3 +92,28 @@ class ErrorResponse(BaseModel):
     error: str
     message: str
     details: Optional[str] = None
+
+
+class FileMetadata(BaseModel):
+    """
+    Response model for file metadata.
+    """
+    filename: str = Field(..., description="The filename without path")
+    full_path: str = Field(..., description="Full GCS path")
+    size_bytes: int = Field(..., description="File size in bytes")
+    size_mb: float = Field(..., description="File size in MB")
+    content_type: str = Field(..., description="MIME type of the file")
+    created_date: str = Field(..., description="File creation date")
+    updated_date: str = Field(..., description="File last updated date")
+    md5_hash: str = Field(..., description="MD5 hash of the file")
+    is_audio_file: bool = Field(..., description="Whether the file is an audio file")
+
+
+class FilesListResponse(BaseModel):
+    """
+    Response model for files list.
+    """
+    total_files: int = Field(..., description="Total number of files")
+    audio_files: int = Field(..., description="Number of audio files")
+    other_files: int = Field(..., description="Number of non-audio files")
+    files: List[FileMetadata] = Field(..., description="List of file metadata")
