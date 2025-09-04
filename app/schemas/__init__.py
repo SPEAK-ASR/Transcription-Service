@@ -117,3 +117,30 @@ class FilesListResponse(BaseModel):
     audio_files: int = Field(..., description="Number of audio files")
     other_files: int = Field(..., description="Number of non-audio files")
     files: List[FileMetadata] = Field(..., description="List of file metadata")
+
+
+class AudioFileComparisonItem(BaseModel):
+    """
+    Model for individual audio file in comparison.
+    """
+    filename: str = Field(..., description="Audio filename")
+    full_path: Optional[str] = Field(None, description="Full GCS path if exists in cloud")
+    size_bytes: Optional[int] = Field(None, description="File size in bytes if exists in cloud")
+    size_mb: Optional[float] = Field(None, description="File size in MB if exists in cloud")
+    audio_id: Optional[UUID] = Field(None, description="Database audio ID if exists in DB")
+    transcription_count: Optional[int] = Field(None, description="Number of transcriptions if exists in DB")
+    google_transcription: Optional[str] = Field(None, description="Google transcription if exists in DB")
+
+
+class AudioComparisonResponse(BaseModel):
+    """
+    Response model for audio files comparison between cloud bucket and database.
+    """
+    summary: dict = Field(..., description="Summary statistics of the comparison")
+    cloud_only_files: List[AudioFileComparisonItem] = Field(
+        ..., description="Audio files that exist only in cloud bucket"
+    )
+    db_only_files: List[AudioFileComparisonItem] = Field(
+        ..., description="Audio files that exist only in database"
+    )
+    matched_files_count: int = Field(..., description="Number of files that exist in both cloud and DB")

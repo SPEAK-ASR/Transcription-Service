@@ -56,6 +56,18 @@ class AudioService:
             raise
 
     @staticmethod
+    async def get_all_audio_files(db: AsyncSession) -> List[Audio]:
+        """Get all audio files from the database."""
+        try:
+            result = await db.execute(select(Audio))
+            audio_files = result.scalars().all()
+            logger.info(f"Retrieved {len(audio_files)} audio files from database")
+            return audio_files
+        except Exception as e:
+            logger.error(f"Error getting all audio files: {e}")
+            raise
+
+    @staticmethod
     async def bulk_insert_from_csv(db: AsyncSession, csv_content: str) -> Tuple[int, int, int, List[str]]:
         """Bulk insert audio records from CSV content."""
         inserted = 0

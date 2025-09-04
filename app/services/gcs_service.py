@@ -146,16 +146,44 @@ class GCSService:
         Returns:
             List of dictionaries containing file metadata
         """
+        return await self._list_files(audio_only=False)
+
+    async def list_all_audio_files(self) -> List[dict]:
+        """
+        List only audio files in the GCS bucket with their metadata.
+        
+        Returns:
+            List of dictionaries containing audio file metadata
+        """
+        return await self._list_files(audio_only=True)
+
+    async def _list_files(self, audio_only: bool = False) -> List[dict]:
+        """
+        Private method to list files in the GCS bucket with their metadata.
+        
+        Args:
+            audio_only: If True, only return audio files. If False, return all files.
+        
+        Returns:
+            List of dictionaries containing file metadata
+        """
         try:
             # List all blobs in the bucket
             blobs = list(self.bucket.list_blobs())
+            
+            # Filter for audio files if requested
+            if audio_only:
+                blobs = [
+                    blob for blob in blobs 
+                    if any(blob.name.lower().endswith(fmt) for fmt in settings.SUPPORTED_AUDIO_FORMATS)
+                ]
             
             files_metadata = []
             for blob in blobs:
                 # Reload to get updated metadata
                 blob.reload()
                 
-                files_metadata.append({
+                file_metadata = {
                     'filename': blob.name.split('/')[-1],  # Just the filename without path
                     'full_path': blob.name,  # Full GCS path
                     'size_bytes': blob.size or 0,
@@ -164,20 +192,30 @@ class GCSService:
                     'created_date': blob.time_created.strftime('%Y-%m-%d %H:%M:%S') if blob.time_created else 'unknown',
                     'updated_date': blob.updated.strftime('%Y-%m-%d %H:%M:%S') if blob.updated else 'unknown',
                     'md5_hash': blob.md5_hash or 'unknown',
-                    'is_audio_file': any(blob.name.lower().endswith(fmt) for fmt in settings.SUPPORTED_AUDIO_FORMATS)
-                })
+                }
+                
+                # Add is_audio_file flag only when listing all files (not audio-only)
+                if not audio_only:
+                    file_metadata['is_audio_file'] = any(
+                        blob.name.lower().endswith(fmt) for fmt in settings.SUPPORTED_AUDIO_FORMATS
+                    )
+                
+                files_metadata.append(file_metadata)
             
             # Sort by filename for consistent ordering
             files_metadata.sort(key=lambda x: x['filename'].lower())
             
-            logger.info(f"Retrieved metadata for {len(files_metadata)} files from GCS bucket")
+            file_type = "audio files" if audio_only else "files"
+            logger.info(f"Retrieved metadata for {len(files_metadata)} {file_type} from GCS bucket")
             return files_metadata
             
         except GoogleCloudError as e:
-            logger.error(f"GCS error when listing files: {e}")
+            error_type = "audio files" if audio_only else "files"
+            logger.error(f"GCS error when listing {error_type}: {e}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error when listing files: {e}")
+            error_type = "audio files" if audio_only else "files"
+            logger.error(f"Unexpected error when listing {error_type}: {e}")
             raise
 
     def _extract_clip_id_from_path(self, gcs_path: str) -> str:
