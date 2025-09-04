@@ -1,0 +1,595 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #0a0a0a;
+    min-height: 100vh;
+    padding: 20px;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid #2a2a2a;
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 24px 20px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #fff;
+}
+
+header p {
+    opacity: 0.7;
+    font-size: 0.95rem;
+    color: #b0b0b0;
+}
+
+/* Messages */
+.message {
+    padding: 12px 20px;
+    margin: 16px 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.message.success {
+    background: #1a2e1a;
+    border: 1px solid #2d5a2d;
+    color: #7cb87c;
+}
+
+.message.error {
+    background: #2e1a1a;
+    border: 1px solid #5a2d2d;
+    color: #e57373;
+}
+
+.message .icon {
+    font-size: 1rem;
+}
+
+/* Audio Section */
+.audio-section {
+    padding: 24px;
+}
+
+.audio-info h2 {
+    color: #fff;
+    margin-bottom: 12px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.audio-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat {
+    background: #2a2a2a;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #b0b0b0;
+    border: 1px solid #3a3a3a;
+}
+
+/* Audio Player */
+.audio-player {
+    background: #1e1e1e;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid #3a3a3a;
+}
+
+.custom-audio-player {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.audio-info {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.audio-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.audio-meta {
+    font-size: 0.9rem;
+    color: #888;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.separator {
+    opacity: 0.5;
+}
+
+/* Progress Bar */
+.audio-progress-container {
+    margin-bottom: 20px;
+}
+
+.audio-progress {
+    position: relative;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4a9eff, #00d4ff);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s ease;
+}
+
+.progress-handle {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.audio-progress:hover .progress-handle {
+    opacity: 1;
+}
+
+.time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* Audio Controls */
+.audio-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #e0e0e0;
+    position: relative;
+}
+
+.control-btn:hover {
+    background: #3a3a3a;
+    border-color: #4a4a4a;
+    transform: scale(1.05);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.play-pause-btn {
+    width: 54px;
+    height: 54px;
+    background: linear-gradient(135deg, #4a9eff, #00d4ff);
+    border-color: #4a9eff;
+}
+
+.play-pause-btn:hover {
+    background: linear-gradient(135deg, #3a8eef, #00c4ef);
+    transform: scale(1.08);
+}
+
+.backward-btn, .forward-btn {
+    width: 48px;
+    height: 48px;
+}
+
+.skip-text {
+    position: absolute;
+    bottom: -2px;
+    right: 2px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: currentColor;
+}
+
+/* Speed Controls */
+.speed-controls {
+    display: flex;
+    gap: 4px;
+    margin: 0 12px;
+    padding: 4px;
+    background: #222;
+    border-radius: 20px;
+    border: 1px solid #333;
+}
+
+.speed-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.speed-btn:hover {
+    color: #e0e0e0;
+    background: #333;
+}
+
+.speed-btn.active {
+    background: #4a9eff;
+    color: #fff;
+}
+
+/* Volume Button */
+.volume-btn {
+    width: 40px;
+    height: 40px;
+}
+
+/* Loading and Error States */
+.audio-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.audio-error .control-btn {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.audio-loading .play-pause-btn {
+    animation: pulse 1.5s infinite;
+}
+
+/* Responsive Design for Audio Player */
+@media (max-width: 480px) {
+    .audio-controls {
+        gap: 6px;
+    }
+    
+    .control-btn {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .play-pause-btn {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .backward-btn, .forward-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .speed-controls {
+        margin: 0 8px;
+    }
+    
+    .speed-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Reference Section */
+.reference-section {
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.reference-section h3 {
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.reference-text {
+    background: #2a2a2a;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #3a3a3a;
+    font-style: italic;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    color: #c0c0c0;
+    font-size: 0.9rem;
+}
+
+.reference-note {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+/* Form Styles */
+.transcription-form {
+    background: #1e1e1e;
+    padding: 24px;
+    border-radius: 8px;
+    border: 1px solid #3a3a3a;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #555;
+    background: #333;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.field-note {
+    display: block;
+    margin-top: 4px;
+    color: #888;
+    font-size: 0.8rem;
+}
+
+/* Checkbox Styles */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 0;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.checkbox-label:hover {
+    background: #2a2a2a;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: #666;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+.btn-primary:hover {
+    background: #444;
+    border-color: #666;
+}
+
+.btn-secondary {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border: 1px solid #3a3a3a;
+}
+
+.btn-secondary:hover {
+    background: #3a3a3a;
+    border-color: #4a4a4a;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #3a3a3a;
+}
+
+/* No Audio State */
+.no-audio {
+    text-align: center;
+    padding: 48px 24px;
+    color: #888;
+}
+
+.no-audio-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+.no-audio h2 {
+    margin-bottom: 12px;
+    color: #b0b0b0;
+    font-weight: 500;
+    font-size: 1.3rem;
+}
+
+/* Footer */
+footer {
+    background: #111;
+    text-align: center;
+    padding: 16px;
+    border-top: 1px solid #2a2a2a;
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+    }
+    
+    .container {
+        border-radius: 8px;
+    }
+    
+    header {
+        padding: 20px 16px;
+    }
+    
+    header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .audio-section {
+        padding: 20px 16px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .audio-controls {
+        justify-content: center;
+    }
+    
+    .audio-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .transcription-form {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.4rem;
+    }
+    
+    .audio-section {
+        padding: 16px 12px;
+    }
+    
+    .transcription-form {
+        padding: 16px 12px;
+    }
+    
+    .btn {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+    }
+}

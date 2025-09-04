@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription Tool</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Audio Transcription</h1>
+            <p>Listen and transcribe with metadata</p>
+        </header>
+
+        <!-- Messages -->
+        {% if success_message %}
+        <div class="message success">
+            <span class="icon">✓</span>
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+        <div class="message error">
+            <span class="icon">×</span>
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        {% if audio %}
+        <div class="audio-section">
+            <div class="audio-info">
+                <div class="audio-stats">
+                    <span class="stat">{{ audio.transcription_count }}/2 transcriptions</span>
+                    {% if audio.google_transcription %}
+                    <span class="stat">Reference available</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Audio Player -->
+            <div class="audio-player">
+                <audio preload="auto" id="audioPlayer" crossorigin="anonymous" style="display: none;">
+                    <source src="{{ audio.gcs_signed_url }}" type="audio/mpeg">
+                    <source src="{{ audio.gcs_signed_url }}" type="audio/mp4">
+                    <source src="{{ audio.gcs_signed_url }}" type="audio/wav">
+                    <source src="{{ audio.gcs_signed_url }}" type="audio/ogg">
+                    <source src="{{ audio.gcs_signed_url }}" type="audio/webm">
+                    <source src="{{ audio.gcs_signed_url }}">
+                    Your browser does not support the audio element. 
+                    <a href="{{ audio.gcs_signed_url }}" target="_blank">Download audio file</a>
+                </audio>
+                
+                <!-- Custom Audio Player UI -->
+                <div class="custom-audio-player">
+                    <div class="audio-info">
+                        <div class="audio-meta">
+                            <span class="duration" id="audioDuration">--:--</span>
+                            <span class="separator">•</span>
+                            <span class="speed" id="audioSpeed">1x</span>
+                        </div>
+                    </div>
+                    
+                    <div class="audio-progress-container">
+                        <div class="audio-progress">
+                            <div class="progress-bar" id="progressBar"></div>
+                            <div class="progress-handle" id="progressHandle"></div>
+                        </div>
+                        <div class="time-display">
+                            <span class="current-time" id="currentTime">0:00</span>
+                            <span class="total-time" id="totalTime">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="audio-controls">
+                        <button type="button" class="control-btn replay-btn" onclick="replayAudio()" title="Replay from beginning">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12,5V1L7,6L12,11V7A6,6 0 0,1 18,13A6,6 0 0,1 12,19A6,6 0 0,1 6,13H4A8,8 0 0,0 12,21A8,8 0 0,0 20,13A8,8 0 0,0 12,5Z" />
+                            </svg>
+                        </button>
+                        
+                        <button type="button" class="control-btn play-pause-btn" id="playPauseBtn" onclick="toggleAudio()" title="Play/Pause">
+                            <svg class="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                            </svg>
+                            <svg class="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                                <path d="M14,19H18V5H14M6,19H10V5H6V19Z" />
+                            </svg>
+                        </button>
+                        
+                        <div class="speed-controls">
+                            <button type="button" class="speed-btn" onclick="adjustSpeed(0.5)" data-speed="0.5">0.5x</button>
+                            <button type="button" class="speed-btn" onclick="adjustSpeed(0.75)" data-speed="0.75">0.75x</button>
+                            <button type="button" class="speed-btn active" onclick="adjustSpeed(1.0)" data-speed="1.0">1x</button>
+                            <button type="button" class="speed-btn" onclick="adjustSpeed(1.25)" data-speed="1.25">1.25x</button>
+                            <button type="button" class="speed-btn" onclick="adjustSpeed(1.5)" data-speed="1.5">1.5x</button>
+                        </div>
+                        
+                        <button type="button" class="control-btn volume-btn" onclick="toggleMute()" title="Mute/Unmute">
+                            <svg class="volume-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
+                            </svg>
+                            <svg class="mute-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                                <path d="M12,4L9.91,6.09L12,8.18M4.27,3L3,4.27L7.73,9H3V15H7L12,20V13.27L16.25,17.53C15.58,18.04 14.83,18.46 14,18.7V20.77C15.38,20.45 16.63,19.82 17.68,18.96L19.73,21L21,19.73L12,10.73M19,12C19,12.94 18.8,13.82 18.46,14.64L19.97,16.15C20.62,14.91 21,13.5 21,12C21,7.72 18,4.14 14,3.23V5.29C16.89,6.15 19,8.83 19,12M16.5,12C16.5,10.23 15.5,8.71 14,7.97V10.18L16.45,12.63C16.5,12.43 16.5,12.21 16.5,12Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Transcription Reference -->
+            {% if audio.google_transcription %}
+            <div class="reference-section">
+                <h3>Reference Transcription</h3>
+                <div class="reference-text">{{ audio.google_transcription }}</div>
+                <small class="reference-note">For reference only. Please provide your own transcription below.</small>
+            </div>
+            {% endif %}
+
+            <!-- Transcription Form -->
+            <form method="post" action="/submit-transcription" class="transcription-form" id="transcriptionForm">
+                <input type="hidden" name="audio_id" value="{{ audio.audio_id }}">
+                
+                <div class="form-group">
+                    <label for="transcription">Your Transcription *</label>
+                    <textarea 
+                        name="transcription" 
+                        id="transcription" 
+                        required 
+                        placeholder="Please type exactly what you hear in the audio..."
+                        rows="4"
+                    ></textarea>
+                    <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="speaker_gender">Speaker Gender *</label>
+                        <select name="speaker_gender" id="speaker_gender" required>
+                            <option value="">Select gender...</option>
+                            {% for gender in speaker_genders %}
+                            <option value="{{ gender }}">{{ gender.title() }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="has_noise" value="true">
+                        <span class="checkmark"></span>
+                        Audio contains background noise
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_code_mixed" value="true">
+                        <span class="checkmark"></span>
+                        Audio contains code-mixed content (multiple languages)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_speaker_overlapping" value="true">
+                        <span class="checkmark"></span>
+                        Multiple speakers are talking at the same time
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Submit Transcription</button>
+                    <a href="/new-audio" class="btn btn-secondary">Skip Audio</a>
+                </div>
+            </form>
+        </div>
+
+        {% else %}
+        <!-- No Audio Available -->
+        <div class="no-audio">
+            <div class="no-audio-icon">♪</div>
+            <h2>No Audio Available</h2>
+            <p>No audio files need transcription at the moment.</p>
+            <a href="/" class="btn btn-primary">Refresh</a>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <footer>
+            <p>Audio Transcription Service</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
