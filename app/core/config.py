@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     HOST: str = os.getenv("HOST")
     PORT: str = os.getenv("PORT")
     DBNAME: str = os.getenv("DBNAME")
+
     DATABASE_URL: str = f"postgresql://{DBUSER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
 
     # Google Cloud Storage settings

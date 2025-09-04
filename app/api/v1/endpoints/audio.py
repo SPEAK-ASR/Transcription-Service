@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_database_session
+from app.core.database import get_async_database_session
 from app.schemas import AudioResponse, CSVUploadResult
 from app.services.gcs_service import gcs_service
 from app.services.db_service import AudioService
@@ -22,7 +22,7 @@ router = APIRouter()
     description="Returns a random audio file from Google Cloud Storage that needs transcription"
 )
 async def get_random_audio_clip(
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_async_database_session)
 ):
     """
     Get a random audio file for transcription.
@@ -33,8 +33,8 @@ async def get_random_audio_clip(
     3. Returns audio metadata with signed URL
     """
     try:
-        # Get a random audio file that needs transcription
-        audio_file = await AudioService.get_random_audio_for_transcription(db=db)
+        # Get a random audio file that needs transcription (now truly async)
+        audio_file = await AudioService.get_random_audio_for_transcription(db)
         
         if not audio_file:
             raise HTTPException(
@@ -76,7 +76,7 @@ async def get_random_audio_clip(
 )
 async def upload_transcriptions_csv(
     file: UploadFile = File(..., description="CSV file with columns: filename, transcription"),
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_async_database_session)
 ):
     """
     Upload a CSV file containing audio transcriptions.
@@ -102,25 +102,24 @@ async def upload_transcriptions_csv(
         content = await file.read()
         csv_content = content.decode('utf-8')
         
-        # Process the CSV
-        inserted, updated, skipped, errors = await AudioService.bulk_insert_from_csv(
-            db=db,
-            csv_content=csv_content
+        # Process the CSV (now truly async)
+        inserted, skipped, skipped_files = await AudioService.bulk_insert_from_csv(
+            db,
+            csv_content,
         )
-        
-        total_records = inserted + updated + skipped
+
+        total_records = inserted + skipped
         
         logger.info(
             f"CSV upload completed for file: {file.filename}. "
-            f"Total: {total_records}, Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}"
+            f"Total: {total_records}, Inserted: {inserted}, Skipped: {skipped}"
         )
         
         return CSVUploadResult(
             total_records=total_records,
             inserted=inserted,
-            updated=updated,
             skipped=skipped,
-            errors=errors
+            skipped_files=skipped_files
         )
         
     except HTTPException:

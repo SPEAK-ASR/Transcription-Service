@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.database import get_database_session
+from app.core.database import get_async_database_session
 from app.models import Audio
 from app.schemas import (
-    TranscriptionCreate, 
-    TranscriptionResponse
+    TranscriptionCreate,
+    TranscriptionResponse,
 )
 from app.services.db_service import TranscriptionService
 
@@ -28,7 +28,7 @@ router = APIRouter()
 )
 async def create_transcription(
     transcription_data: TranscriptionCreate,
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_async_database_session)
 ):
     """
     Create a new transcription for an audio file.
@@ -40,10 +40,8 @@ async def create_transcription(
     4. Updates audio transcription count
     """
     try:
-        # Get the audio file
-        result = await db.execute(
-            select(Audio).where(Audio.audio_id == transcription_data.audio_id)
-        )
+        # Get the audio file (now truly async)
+        result = await db.execute(select(Audio).where(Audio.audio_id == transcription_data.audio_id))
         audio_file = result.scalar_one_or_none()
         
         if not audio_file:
@@ -60,10 +58,10 @@ async def create_transcription(
                 detail="This audio file already has the maximum number of transcriptions (2)"
             )
         
-        # Create the transcription
+        # Create the transcription (now truly async)
         new_transcription = await TranscriptionService.create_transcription(
-            db=db,
-            transcription_data=transcription_data
+            db,
+            transcription_data,
         )
         
         logger.info(
