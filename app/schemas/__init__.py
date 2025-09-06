@@ -3,19 +3,13 @@ Pydantic schemas for request/response models.
 """
 
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 from uuid import UUID
-from enum import Enum
 
 
-class SpeakerGender(str, Enum):
-    """
-    Enum for speaker gender.
-    """
-    MALE = "male"
-    FEMALE = "female"
-    OTHER = "other"
+# Speaker gender literal type to match database enum
+SpeakerGender = Literal["male", "female", "cannot_recognized"]
 
 
 class AudioResponse(BaseModel):
@@ -41,7 +35,7 @@ class TranscriptionCreate(BaseModel):
     speaker_gender: SpeakerGender = Field(..., description="Gender of the speaker")
     has_noise: bool = Field(default=False, description="Whether the audio contains noise")
     is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
-    is_speaker_overlapping: bool = Field(default=False, description="Whether speakers are overlapping")
+    is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
     
     @validator('transcription')
     def validate_transcription_text(cls, v):
@@ -60,7 +54,7 @@ class TranscriptionResponse(BaseModel):
     speaker_gender: SpeakerGender
     has_noise: bool
     is_code_mixed: bool
-    is_speaker_overlapping: bool
+    is_speaker_overlappings_exist: bool
     created_at: datetime
     
     class Config:

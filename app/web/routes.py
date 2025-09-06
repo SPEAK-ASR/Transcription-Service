@@ -13,7 +13,10 @@ from typing import Optional
 from app.core.database import get_async_database_session
 from app.services.db_service import AudioService, TranscriptionService
 from app.services.gcs_service import gcs_service
-from app.schemas import TranscriptionCreate, SpeakerGender
+from app.schemas import TranscriptionCreate
+
+# Speaker gender options to match the database enum and literal type
+SPEAKER_GENDER_OPTIONS = ["male", "female", "cannot_recognized"]
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,7 +55,7 @@ async def transcription_home(
             {
                 "request": request,
                 "audio": audio_data,
-                "speaker_genders": [gender.value for gender in SpeakerGender],
+                "speaker_genders": SPEAKER_GENDER_OPTIONS,
                 "success_message": None,
                 "error_message": None
             }
@@ -65,7 +68,7 @@ async def transcription_home(
             {
                 "request": request,
                 "audio": None,
-                "speaker_genders": [gender.value for gender in SpeakerGender],
+                "speaker_genders": SPEAKER_GENDER_OPTIONS,
                 "success_message": None,
                 "error_message": "Error loading audio file. Please try again."
             }
@@ -91,10 +94,10 @@ async def submit_transcription(
         transcription_data = TranscriptionCreate(
             audio_id=UUID(audio_id),
             transcription=transcription.strip(),
-            speaker_gender=SpeakerGender(speaker_gender),
+            speaker_gender=speaker_gender,  # Now just a string, not enum
             has_noise=has_noise,
             is_code_mixed=is_code_mixed,
-            is_speaker_overlapping=is_speaker_overlapping
+            is_speaker_overlappings_exist=is_speaker_overlapping
         )
         
         # Submit the transcription
@@ -123,7 +126,7 @@ async def submit_transcription(
             {
                 "request": request,
                 "audio": audio_data,
-                "speaker_genders": [gender.value for gender in SpeakerGender],
+                "speaker_genders": SPEAKER_GENDER_OPTIONS,
                 "success_message": "Transcription submitted successfully! Here's your next audio file.",
                 "error_message": None
             }
@@ -183,7 +186,7 @@ async def submit_transcription(
         {
             "request": request,
             "audio": audio_data,
-            "speaker_genders": [gender.value for gender in SpeakerGender],
+            "speaker_genders": SPEAKER_GENDER_OPTIONS,
             "success_message": None,
             "error_message": error_message
         }

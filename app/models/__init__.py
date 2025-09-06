@@ -8,16 +8,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 import uuid
-import enum
-
-
-class SpeakerGender(enum.Enum):
-    """
-    Enum for speaker gender.
-    """
-    MALE = "male"
-    FEMALE = "female"
-    UNKNOWN = "unknown"
 
 
 class Audio(Base):
@@ -55,9 +45,8 @@ class Transcriptions(Base):
     is_code_mixed = Column(Boolean, default=False)
     
     # Speaker information
-    is_speaker_overlapping = Column(Boolean, default=False)
-    is_speaker_male = Column(Boolean, default=None, nullable=True)
-    speaker_gender = Column(Enum(SpeakerGender), nullable=True)
+    is_speaker_overlappings_exist = Column(Boolean, default=False)
+    speaker_gender = Column(Enum("male", "female", "cannot_recognized", name="speaker_gender_enum", create_type=False), nullable=True, default="cannot_recognized")
     
     # Tracking
     created_at = Column(DateTime(timezone=True), server_default=func.now())
