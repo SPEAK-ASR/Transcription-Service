@@ -20,13 +20,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Database connection components
-    DBUSER: str = os.getenv("DBUSER")
-    PASSWORD: str = os.getenv("PASSWORD")
-    HOST: str = os.getenv("HOST")
-    PORT: str = os.getenv("PORT")
-    DBNAME: str = os.getenv("DBNAME")
-
-    DATABASE_URL: str = f"postgresql://{DBUSER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
 
     # Google Cloud Storage settings
     GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "sinhala-asr-audio-dataset-2025")

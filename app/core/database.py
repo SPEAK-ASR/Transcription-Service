@@ -90,7 +90,7 @@ async def init_database() -> None:
             # Simple no-op to check connection - use text() for raw SQL
             await conn.execute(text("SELECT 1"))
             logger.info("Async database connection established successfully")
-            logger.info(f"Connected to database: {settings.DBNAME} at {settings.HOST}")
+            logger.info(f"Connected to database: {settings.DATABASE_URL}")
     except Exception as e:
         logger.error(f"Failed to initialize async database: {e}")
         raise
