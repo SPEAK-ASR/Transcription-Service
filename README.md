@@ -4,9 +4,11 @@ FastAPI application for creating Sinhala Automatic Speech Recognition (ASR) data
 
 ## Features
 
+- **Race-Condition Safe Audio Assignment**: Uses lease-based system with SELECT FOR UPDATE SKIP LOCKED
 - **Random Audio Serving**: Serves random audio clips from Google Cloud Storage with intelligent prioritization
+- **Configurable Lease Timeout**: Customizable timeout (default 15 minutes) prevents stuck assignments and ensures fault tolerance
 - **Transcription Collection**: Collects user transcriptions with metadata (speaker gender, noise detection, code-mixing)
-- **Duplicate Tracking**: Ensures each audio clip is transcribed by 2 different users (configurable)
+- **Configurable Attempt Limits**: Customizable maximum transcriptions per audio file (default 2)
 - **Smart Prioritization**: Prioritizes clips with fewer annotations for balanced dataset creation
 - **Supabase Integration**: Uses Supabase (PostgreSQL) for reliable, scalable database operations
 
@@ -83,7 +85,13 @@ pip install -r requirements.txt
      - Port (usually 5432)
 
 3. **Create Tables**:
-   The tables should already be created in your Supabase database. If not, you can create them using the SQL editor in Supabase dashboard:
+   The tables should already be created in your Supabase database. If not, you can create them using the SQL editor in Supabase dashboard.
+
+4. **Apply Lease System Migration**:
+   If you're upgrading from a previous version, run the migration to add the lease-based system:
+   ```bash
+   python migrate_lease_system.py
+   ```
 
 ### 3. Google Cloud Storage Setup
 
@@ -190,6 +198,7 @@ curl -X POST "http://localhost:8000/api/v1/audio/upload-csv" \
 - `audio_filename`: Name of the audio file
 - `google_transcription`: Google Cloud Speech-to-Text transcription (optional)
 - `transcription_count`: Number of user transcriptions (automatically updated)
+- `leased_until`: Timestamp for lease-based concurrency control (prevents race conditions)
 
 ### Transcriptions
 - `trans_id`: UUID primary key
@@ -212,7 +221,8 @@ Key environment variables:
 - `DBNAME`: Database name (usually 'postgres')
 - `GCS_BUCKET_NAME`: Google Cloud Storage bucket name
 - `DEBUG`: Enable debug mode (true/false)
-- `ANNOTATIONS_PER_CLIP`: Number of transcriptions required per clip (default: 2)
+- `AUDIO_LEASE_TIMEOUT_MINUTES`: Lease timeout in minutes (default: 15)
+- `MAX_TRANSCRIPTIONS_PER_AUDIO`: Maximum transcriptions per audio file (default: 2)
 
 ## Development
 
