@@ -26,9 +26,6 @@ COPY . .
 # Make port 8000 available to the world outside this container
 EXPOSE 8000
 
-# Set the Google Application Credentials environment variable
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/keys/service-account-key.json
-
 # The service account key path will be set during runtime
 # Google recommends not setting credentials in the Dockerfile
 # Instead, mount the volume or set it as an environment variable during deployment
