@@ -238,34 +238,25 @@ class TranscriptionService:
         1. Increments the transcription_count on the audio record
         2. Can be extended to release the lease by setting leased_until = NOW()
         """
-        try:
-            # Start a transaction
-            new_transcription = Transcriptions(
-                audio_id=transcription_data.audio_id,
-                transcription=transcription_data.transcription,
-                speaker_gender=transcription_data.speaker_gender,
-                has_noise=transcription_data.has_noise,
-                is_code_mixed=transcription_data.is_code_mixed,
-                is_speaker_overlapping=transcription_data.is_speaker_overlapping,
-            )
+        # Create the transcription object
+        new_transcription = Transcriptions(
+            audio_id=transcription_data.audio_id,
+            transcription=transcription_data.transcription,
+            speaker_gender=transcription_data.speaker_gender,
+            has_noise=transcription_data.has_noise,
+            is_code_mixed=transcription_data.is_code_mixed,
+            is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
+        )
 
-            db.add(new_transcription)
-            await db.flush()  # Ensure the transcription is inserted before committing
-            
-            await db.commit()
-            await db.refresh(new_transcription)
-
-            logger.info(
-                f"Created new transcription: {new_transcription.trans_id} "
-                f"for audio: {transcription_data.audio_id} "
-                f"(transcription_count updated by trigger)"
-            )
-            return new_transcription
-
-        except Exception as e:
-            logger.error(f"Error creating transcription: {e}")
-            await db.rollback()
-            raise
+        db.add(new_transcription)
+        await db.commit()
+        
+        logger.info(
+            f"Created new transcription: {new_transcription.trans_id} "
+            f"for audio: {transcription_data.audio_id} "
+            f"(transcription_count updated by trigger)"
+        )
+        return new_transcription
 
     @staticmethod
     async def get_transcriptions_for_audio(db: AsyncSession, audio_id: UUID) -> List[Transcriptions]:
