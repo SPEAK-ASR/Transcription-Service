@@ -13,6 +13,7 @@ psycopg2-binary
 
 # Google Cloud Storage
 google-cloud-storage
+google-auth
 
 # Environment management
 python-dotenv

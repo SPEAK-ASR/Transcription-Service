@@ -10,6 +10,7 @@ from datetime import timedelta
 import random
 
 from app.core.config import settings
+from app.core.gcp_auth import gcp_auth_manager
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,32 @@ class GCSService:
     """
     
     def __init__(self):
-        self.client = storage.Client()
-        self.bucket = self.client.bucket(settings.GCS_BUCKET_NAME)
+        self._client = None
+        self._bucket = None
+    
+    @property
+    def client(self):
+        """Lazy initialization of storage client."""
+        if self._client is None:
+            try:
+                self._client = gcp_auth_manager.get_storage_client()
+                logger.info("GCS client initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize GCS client: {e}")
+                raise
+        return self._client
+    
+    @property 
+    def bucket(self):
+        """Lazy initialization of bucket."""
+        if self._bucket is None:
+            try:
+                self._bucket = self.client.bucket(settings.GCS_BUCKET_NAME)
+                logger.info(f"GCS bucket '{settings.GCS_BUCKET_NAME}' initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize GCS bucket '{settings.GCS_BUCKET_NAME}': {e}")
+                raise
+        return self._bucket
     
     async def get_random_audio_clip(self, exclude_clip_ids: Optional[List[str]] = None) -> Optional[dict]:
         """

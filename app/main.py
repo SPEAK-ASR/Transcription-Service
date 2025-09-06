@@ -10,6 +10,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import init_database, close_database
+from app.core.gcp_auth import gcp_auth_manager
 from app.api.v1.api import api_router
 from app.web.routes import router as web_router
 
@@ -29,6 +30,15 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting up Sinhala ASR Dataset Creation Service")
+    
+    # Setup GCP credentials first
+    try:
+        gcp_auth_manager.setup_credentials()
+        logger.info("GCP authentication configured successfully")
+    except Exception as e:
+        logger.error(f"Failed to setup GCP credentials: {e}")
+        # Don't raise here - let the app continue with default auth
+    
     try:
         await init_database()
         logger.info("Database initialized successfully")
@@ -45,6 +55,13 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection closed successfully")
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
+    
+    # Cleanup GCP resources
+    try:
+        gcp_auth_manager.cleanup()
+        logger.info("GCP resources cleaned up successfully")
+    except Exception as e:
+        logger.error(f"Error cleaning up GCP resources: {e}")
 
 
 app = FastAPI(

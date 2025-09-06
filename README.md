@@ -97,8 +97,16 @@ pip install -r requirements.txt
 
 1. Create a GCS bucket for audio files
 2. Create a service account with Storage Object Viewer permissions
-3. Download the service account key JSON file
-4. Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+3. **Option A - Local Development**: Download the service account key JSON file and set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+4. **Option B - Production/Cloud Run**: Use base64 encoded service account (see [GCP Authentication Setup](./GCP_AUTH_SETUP.md))
+
+For production deployment (especially Cloud Run), encode your service account:
+```bash
+# Encode service account to base64
+base64 service_account.json > service_account.b64
+# Set as environment variable
+export SERVICE_ACCOUNT_B64="<your-base64-string>"
+```
 
 ### 4. Configuration
 
@@ -106,21 +114,25 @@ pip install -r requirements.txt
 # Copy environment template
 cp .env.example .env
 
-# Edit .env file with your Supabase credentials
+# Edit .env file with your credentials
 USER=your_supabase_user
 PASSWORD=your_supabase_password
 HOST=your_supabase_host
 PORT=5432
 DBNAME=postgres
 GCS_BUCKET_NAME=your_gcs_bucket_name
+SERVICE_ACCOUNT_B64=your_base64_encoded_service_account  # Optional: for production
 DEBUG=true
 ```
 
-### 5. Test Database Connection
+### 5. Test Connections
 
 ```bash
 # Test your database connection
 python test_db_connection.py
+
+# Test GCP authentication setup
+python test_gcp_auth.py
 ```
 
 If successful, you should see:
@@ -220,6 +232,7 @@ Key environment variables:
 - `PORT`: Database port (usually 5432)
 - `DBNAME`: Database name (usually 'postgres')
 - `GCS_BUCKET_NAME`: Google Cloud Storage bucket name
+- `SERVICE_ACCOUNT_B64`: Base64 encoded service account JSON (optional, for production)
 - `DEBUG`: Enable debug mode (true/false)
 - `AUDIO_LEASE_TIMEOUT_MINUTES`: Lease timeout in minutes (default: 15)
 - `MAX_TRANSCRIPTIONS_PER_AUDIO`: Maximum transcriptions per audio file (default: 2)
@@ -230,6 +243,9 @@ Key environment variables:
 ```bash
 # Test database connection
 python test_db_connection.py
+
+# Test GCP authentication setup
+python test_gcp_auth.py
 
 # Run application tests (if available)
 pytest

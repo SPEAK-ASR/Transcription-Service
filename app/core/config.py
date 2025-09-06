@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # Google Cloud Storage settings
     GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "sinhala-asr-audio-dataset-2025")
+    SERVICE_ACCOUNT_B64: Optional[str] = os.getenv("SERVICE_ACCOUNT_B64")
     
     # CORS settings
     ALLOWED_HOSTS: List[str] = ["*"]
