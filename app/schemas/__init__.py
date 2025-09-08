@@ -1,8 +1,10 @@
 """
 Pydantic schemas for request/response models.
+
+Note: Uses Pydantic v2 APIs (`field_validator`, `ConfigDict`).
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Literal
 from datetime import datetime
 from uuid import UUID
@@ -22,8 +24,7 @@ class AudioResponse(BaseModel):
     transcription_count: int = 0
     gcs_signed_url: str  # Signed URL for direct access
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TranscriptionCreate(BaseModel):
@@ -37,10 +38,11 @@ class TranscriptionCreate(BaseModel):
     is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
     is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
     
-    @validator('transcription')
-    def validate_transcription_text(cls, v):
+    @field_validator("transcription")
+    @classmethod
+    def validate_transcription_text(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError('Transcription text cannot be empty')
+            raise ValueError("Transcription text cannot be empty")
         return v.strip()
 
 
@@ -57,8 +59,7 @@ class TranscriptionResponse(BaseModel):
     is_speaker_overlappings_exist: bool
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CSVUploadResult(BaseModel):

@@ -1,11 +1,14 @@
 """
 Service layer for database operations with async support.
+
+This module encapsulates DB access patterns for audio and transcription
+operations. Functions are written to be safe for concurrent usage and to avoid
+leaving sessions in a bad state.
 """
 
 import logging
 from typing import Optional, List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from sqlalchemy import select, text
 from uuid import UUID
 from io import StringIO
@@ -168,8 +171,17 @@ class AudioService:
             raise
 
     @staticmethod
-    async def bulk_insert_from_csv(db: AsyncSession, csv_content: str) -> Tuple[int, int, int, List[str]]:
-        """Bulk insert audio records from CSV content."""
+    async def bulk_insert_from_csv(db: AsyncSession, csv_content: str) -> Tuple[int, int, List[str]]:
+        """
+        Bulk insert audio records from CSV content.
+
+        The CSV is expected to contain columns: `filename`, `transcription`.
+        Existing filenames are skipped to avoid duplicates. Empty filenames are
+        also skipped.
+
+        Returns:
+            Tuple[int, int, List[str]]: (inserted_count, skipped_count, skipped_files)
+        """
         inserted = 0
         skipped = 0
         skipped_files: List[str] = []
@@ -177,44 +189,46 @@ class AudioService:
         try:
             df = pd.read_csv(StringIO(csv_content))
 
-            required_columns = ['filename', 'transcription']
+            required_columns = ["filename", "transcription"]
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 raise ValueError(f"Missing required columns: {missing_columns}")
 
+            # Normalize filenames and collect the set for a single DB lookup
+            df["filename"] = df["filename"].astype(str).str.strip()
+            filenames = {fn for fn in df["filename"].tolist() if fn}
+
+            if filenames:
+                existing_result = await db.execute(
+                    select(Audio.audio_filename).where(Audio.audio_filename.in_(filenames))
+                )
+                existing_filenames = set(existing_result.scalars().all())
+            else:
+                existing_filenames = set()
+
             for index, row in df.iterrows():
-                try:
-                    filename = str(row['filename']).strip()
-                    transcription = str(row['transcription']).strip() if pd.notna(row['transcription']) else None
+                filename = str(row["filename"]).strip() if pd.notna(row["filename"]) else ""
+                transcription = (
+                    str(row["transcription"]).strip() if pd.notna(row["transcription"]) else None
+                )
 
-                    if not filename:
-                        skipped += 1
-                        skipped_files.append({
-                            "row": index + 1,
-                            "filename": filename
-                        })
-                        continue
-
-                    # Try to insert new audio record
-                    new_audio = Audio(
-                        audio_filename=filename,
-                        google_transcription=transcription,
-                        transcription_count=0
-                    )
-                    db.add(new_audio)
-                    await db.flush()  # Flush to catch unique constraint violations
-                    inserted += 1
-                    logger.info(f"Created new audio record: {filename}")
-
-                except Exception as e:
-                    # Handle unique constraint violation - just skip existing records
-                    await db.rollback()
+                if not filename:
                     skipped += 1
-                    logger.info(f"Skipped existing audio record: {filename}")
-                    skipped_files.append({
-                        "row": index + 1,
-                        "filename": filename
-                    })
+                    skipped_files.append({"row": index + 1, "filename": filename})
+                    continue
+
+                if filename in existing_filenames:
+                    skipped += 1
+                    skipped_files.append({"row": index + 1, "filename": filename})
+                    continue
+
+                new_audio = Audio(
+                    audio_filename=filename,
+                    google_transcription=transcription,
+                    transcription_count=0,
+                )
+                db.add(new_audio)
+                inserted += 1
 
             await db.commit()
             logger.info(f"Bulk insert completed: {inserted} inserted, {skipped} skipped")
