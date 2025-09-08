@@ -125,13 +125,26 @@
                 
                 <div class="form-group">
                     <label for="transcription">Your Transcription *</label>
-                    <textarea 
-                        name="transcription" 
-                        id="transcription" 
-                        required 
-                        placeholder="Please type exactly what you hear in the audio..."
-                        rows="4"
-                    ></textarea>
+
+                    <!-- Built-in Sinhala IME toggle (default OFF) -->
+                    <label class="checkbox-label" for="imeToggle" style="margin-bottom: 8px;">
+                        <input type="checkbox" id="imeToggle" />
+                        <span class="checkmark"></span>
+                        Don’t have a Sinhala keyboard, try the built-in Sinhala phonetic keyboard.
+                    </label>
+
+                    <!-- Textarea wrapped to host the inline chip "සි | en" -->
+                    <div class="ime-container">
+                        <textarea 
+                            name="transcription" 
+                            id="transcription" 
+                            required 
+                            placeholder="Please type exactly what you hear in the audio..."
+                            rows="4"
+                        ></textarea>
+                        <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">සි | en</button>
+                    </div>
+
                     <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
                 </div>
 
@@ -195,5 +208,6 @@
     </div>
 
     <script src="/static/script.js"></script>
+    <script src="/static/sin-phonetic-ime.js"></script>
 </body>
 </html>

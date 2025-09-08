@@ -425,6 +425,40 @@ textarea {
     line-height: 1.5;
 }
 
+/* IME (Sinhala phonetic) minimal styles */
+.ime-container {
+    position: relative;
+}
+
+.ime-container textarea {
+    padding-right: 70px; /* leave room for inline chip */
+}
+
+.ime-chip {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: #cfcfcf;
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ime-chip.si-active {
+    background: #4a9eff;
+    border-color: #4a9eff;
+    color: #fff;
+}
+
+.ime-chip[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .field-note {
     display: block;
     margin-top: 4px;
