@@ -1,9 +1,9 @@
 """
-Database configuration and connection setup using SQLAlchemy's asynchronous engine.
+Database configuration and connection management.
 
-This module exposes a single async engine and the corresponding `AsyncSession`
-factory for use across the application, along with small helpers to initialize
-and close connections during application startup/shutdown.
+This module provides asynchronous database connectivity using SQLAlchemy
+with asyncpg driver for PostgreSQL. It includes connection lifecycle
+management and session factory for dependency injection.
 """
 
 import logging
@@ -20,20 +20,28 @@ logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
-    """Base class for all database models."""
+    """
+    Base class for all SQLAlchemy ORM models.
+    
+    This declarative base provides the foundation for all database models
+    in the application with automatic table mapping and relationship support.
+    """
     pass
 
 
+# Convert standard PostgreSQL URL to asyncpg format
 ASYNC_DATABASE_URL = settings.DATABASE_URL.replace(
     "postgresql://", "postgresql+asyncpg://"
 )
 
+# Create async database engine with connection pooling
 async_engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=settings.DEBUG,
-    poolclass=NullPool,
+    poolclass=NullPool,  # Use NullPool for serverless/lambda deployments
 )
 
+# Create async session factory
 AsyncSessionLocal = async_sessionmaker(
     autocommit=False, 
     autoflush=False, 

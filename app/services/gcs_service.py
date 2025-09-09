@@ -1,5 +1,9 @@
 """
-Service layer for Google Cloud Storage operations.
+Google Cloud Storage service for audio file management.
+
+This module provides high-level operations for interacting with Google Cloud
+Storage, including file listing, metadata retrieval, and signed URL generation
+for secure audio file access.
 """
 
 import logging
@@ -7,7 +11,6 @@ from typing import Optional, List
 from google.cloud import storage
 from google.cloud.exceptions import NotFound, GoogleCloudError
 from datetime import timedelta
-import random
 
 from app.core.config import settings
 from app.core.gcp_auth import gcp_auth_manager
@@ -17,10 +20,15 @@ logger = logging.getLogger(__name__)
 
 class GCSService:
     """
-    Service for Google Cloud Storage operations.
+    Google Cloud Storage service with lazy initialization and caching.
+    
+    Provides methods for file operations, metadata retrieval, and signed URL
+    generation. Uses lazy initialization to improve startup performance and
+    handles authentication via the GCP auth manager.
     """
     
     def __init__(self):
+        """Initialize with lazy-loaded client and bucket."""
         self._client = None
         self._bucket = None
     
@@ -48,59 +56,7 @@ class GCSService:
                 raise
         return self._bucket
     
-    async def get_random_audio_clip(self, exclude_clip_ids: Optional[List[str]] = None) -> Optional[dict]:
-        """
-        Get a random audio clip from the GCS bucket.
-        
-        Args:
-            exclude_clip_ids: List of clip IDs to exclude from selection
-            
-        Returns:
-            Dictionary with clip metadata or None if no clips found
-        """
-        try:
-            # List all blobs in the bucket
-            blobs = list(self.bucket.list_blobs())
-            
-            # Filter for audio files
-            audio_blobs = [
-                blob for blob in blobs 
-                if any(blob.name.lower().endswith(fmt) for fmt in settings.SUPPORTED_AUDIO_FORMATS)
-            ]
-            
-            if not audio_blobs:
-                logger.warning("No audio files found in GCS bucket")
-                return None
-            
-            # Filter out excluded clips if provided
-            if exclude_clip_ids:
-                audio_blobs = [
-                    blob for blob in audio_blobs 
-                    if self._extract_clip_id_from_path(blob.name) not in exclude_clip_ids
-                ]
-            
-            if not audio_blobs:
-                logger.warning("No available audio files after filtering exclusions")
-                return None
-            
-            # Select random blob
-            selected_blob = random.choice(audio_blobs)
-            
-            return {
-                'clip_id': self._extract_clip_id_from_path(selected_blob.name),
-                'gcs_path': selected_blob.name,
-                'filename': selected_blob.name.split('/')[-1],
-                'file_size_bytes': selected_blob.size,
-                'audio_format': selected_blob.name.split('.')[-1].lower(),
-                'blob': selected_blob
-            }
-            
-        except GoogleCloudError as e:
-            logger.error(f"GCS error when fetching random clip: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error when fetching random clip: {e}")
-            raise
+
     
     async def generate_signed_url(self, blob_name: str, expiration_hours: int = 1) -> str:
         """
@@ -243,13 +199,7 @@ class GCSService:
             logger.error(f"Unexpected error when listing {error_type}: {e}")
             raise
 
-    def _extract_clip_id_from_path(self, gcs_path: str) -> str:
-        """
-        Extract clip ID from GCS path.
-        Assumes format like: folder/subfolder/clip_id.ext
-        """
-        filename = gcs_path.split('/')[-1]
-        return filename.split('.')[0]  # Remove extension
+
 
 
 # Create global GCS service instance

@@ -1,5 +1,11 @@
 """
-Audio endpoints for serving random audio clips and bucket/database utilities.
+Audio API endpoints for the Sinhala ASR Dataset Collection Service.
+
+This module provides REST API endpoints for:
+- Retrieving audio files for transcription
+- Uploading CSV files with audio metadata
+- Listing files and metadata from Google Cloud Storage
+- Comparing cloud storage with database records
 """
 
 import logging

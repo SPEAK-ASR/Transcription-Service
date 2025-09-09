@@ -1,42 +1,74 @@
-# Use Python 3.12 slim image as base
+# Multi-stage build for Sinhala ASR Dataset Collection Service
+FROM python:3.12-slim as builder
+
+# Set build arguments
+ARG BUILD_DATE
+ARG VERSION=1.0.0
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables for build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --user -r requirements.txt
+
+# Production stage
 FROM python:3.12-slim
+
+# Set metadata labels
+LABEL maintainer="Sinhala ASR Research Team" \
+      version="${VERSION}" \
+      description="Sinhala ASR Dataset Collection Service" \
+      build-date="${BUILD_DATE}"
 
 # Set working directory
 WORKDIR /app
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/home/app/.local/bin:$PATH"
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Create non-root user
+RUN groupadd --system app && \
+    useradd --system --group app --home /home/app --create-home app
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy Python dependencies from builder stage
+COPY --from=builder /root/.local /home/app/.local
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application code
+COPY --chown=app:app . .
 
-# Copy project files (with service account key included via .dockerignore changes)
-COPY . .
-
-# Make port 8000 available to the world outside this container
-EXPOSE 8000
-
-# The service account key path will be set during runtime
-# Google recommends not setting credentials in the Dockerfile
-# Instead, mount the volume or set it as an environment variable during deployment
-
-# Create a non-root user and change permissions
-RUN addgroup --system app && adduser --system --group app \
-    && chown -R app:app /app
+# Ensure static files are properly owned
+RUN chown -R app:app /app
 
 # Switch to non-root user
 USER app
 
-# Command to run the application in production mode with gunicorn
-# Uses the PORT environment variable provided by Cloud Run
-CMD ["sh", "-c", "gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000}"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Default command for production
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info"]

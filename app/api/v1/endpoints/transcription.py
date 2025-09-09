@@ -1,5 +1,10 @@
 """
-Transcription endpoints for collecting user transcriptions.
+Transcription API endpoints for the Sinhala ASR Dataset Collection Service.
+
+This module provides REST API endpoints for:
+- Submitting user transcriptions with quality metadata
+- Validating audio file existence before transcription submission
+- Managing transcription counts and lease releases automatically
 """
 
 import logging

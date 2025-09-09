@@ -1,6 +1,9 @@
 """
-Google Cloud Platform authentication utilities.
-Handles service account credential setup from base64 encoded environment variable.
+Google Cloud Platform authentication management.
+
+This module handles GCP authentication using base64-encoded service account
+credentials or Application Default Credentials (ADC). It provides a centralized
+way to manage credentials across the application with proper resource cleanup.
 """
 
 import os
@@ -19,10 +22,18 @@ logger = logging.getLogger(__name__)
 
 class GCPAuthManager:
     """
-    Manages Google Cloud Platform authentication using base64 encoded service account.
+    Centralized Google Cloud Platform authentication manager.
+    
+    Handles authentication using either:
+    1. Base64-encoded service account credentials from environment variables
+    2. Application Default Credentials (ADC) as fallback
+    
+    Provides credential management, storage client creation, and proper
+    resource cleanup for temporary credential files.
     """
     
     def __init__(self):
+        """Initialize the auth manager with empty credential state."""
         self._credentials = None
         self._temp_file_path = None
     

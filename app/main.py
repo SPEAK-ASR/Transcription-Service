@@ -1,8 +1,12 @@
 """
-Main FastAPI application for Sinhala ASR dataset creation.
+Main FastAPI application for Sinhala ASR Dataset Collection Service.
+
+This module sets up the main FastAPI application with proper initialization,
+middleware configuration, and route registration for collecting Sinhala 
+speech recognition transcriptions.
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager

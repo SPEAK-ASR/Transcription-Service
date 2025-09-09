@@ -1,9 +1,9 @@
 """
-Service layer for database operations with async support.
+Database service layer for audio and transcription operations.
 
-This module encapsulates DB access patterns for audio and transcription
-operations. Functions are written to be safe for concurrent usage and to avoid
-leaving sessions in a bad state.
+This module provides high-level database operations with proper error handling,
+transaction management, and concurrency safety. All operations use async
+SQLAlchemy sessions for optimal performance.
 """
 
 import logging
@@ -24,39 +24,25 @@ logger = logging.getLogger(__name__)
 class AudioService:
     """Service for audio database operations."""
 
-    @staticmethod
-    async def get_audio_needing_transcription_prioritized(
-        db: AsyncSession,
-        limit: int = 10
-    ) -> List[Audio]:
-        """Get audio files that need transcriptions, prioritized by transcription count."""
-        try:
-            result = await db.execute(
-                select(Audio)
-                .where(Audio.transcription_count < settings.MAX_TRANSCRIPTIONS_PER_AUDIO)
-                .order_by(Audio.transcription_count.asc())
-                .limit(limit)
-            )
-            audio_files = result.scalars().all()
-            logger.info(f"Retrieved {len(audio_files)} audio files needing transcription")
-            return audio_files
-        except Exception as e:
-            logger.error(f"Error getting prioritized audio files: {e}")
-            raise
+
 
     @staticmethod
     async def claim_audio_for_transcription(db: AsyncSession) -> Optional[Audio]:
         """
-        Safely claim an audio file for transcription processing using lease-based system.
+        Atomically claim an audio file for transcription using lease-based system.
         
-        This method:
-        1. Finds audio files where transcription_count < MAX_TRANSCRIPTIONS_PER_AUDIO AND (leased_until IS NULL OR leased_until < NOW())
-        2. Orders by transcription_count ASC to prioritize files with fewer attempts
-        3. Locks one row atomically using FOR UPDATE SKIP LOCKED to prevent race conditions
-        4. Updates leased_until to NOW() + AUDIO_LEASE_TIMEOUT_MINUTES
-        5. Returns the claimed audio file details
+        This method uses PostgreSQL's FOR UPDATE SKIP LOCKED to safely claim
+        an audio file without race conditions. It prioritizes files with fewer
+        existing transcriptions and ensures proper lease management.
         
-        Returns None if no audio file is available for claiming.
+        Process:
+        1. Find available audio files (transcription_count < max, lease expired)
+        2. Order by transcription_count to prioritize less-transcribed files
+        3. Lock and claim one row atomically
+        4. Set lease expiration timestamp
+        
+        Returns:
+            Optional[Audio]: Claimed audio file or None if no files available
         """
         try:
             # Use a raw SQL query for optimal performance with FOR UPDATE SKIP LOCKED
@@ -115,23 +101,31 @@ class AudioService:
     @staticmethod
     async def get_random_audio_for_transcription(db: AsyncSession) -> Optional[Audio]:
         """
-        Get an audio file for transcription using the lease-based system.
-        This method replaces the old random selection with safe lease-based claiming.
+        Get an audio file for transcription using the lease-based claiming system.
+        
+        This method safely claims an audio file for transcription, preventing
+        race conditions through database-level locking and lease management.
+        
+        Returns:
+            Optional[Audio]: Claimed audio file or None if no files available
         """
         return await AudioService.claim_audio_for_transcription(db)
 
     @staticmethod
     async def release_audio_lease(db: AsyncSession, audio_id: UUID) -> bool:
         """
-        Release the lease on an audio file by setting leased_until to NOW().
-        This should be called when a transcription is submitted.
+        Release the lease on an audio file.
+        
+        Sets the lease expiration to the current time, making the audio
+        available for claiming by other users. Called when a transcription
+        is submitted or when a lease needs to be manually released.
         
         Args:
             db: Database session
             audio_id: UUID of the audio file to release
             
         Returns:
-            bool: True if the lease was successfully released, False otherwise
+            bool: True if lease was released successfully, False otherwise
         """
         try:
             query = text("""
@@ -173,14 +167,21 @@ class AudioService:
     @staticmethod
     async def bulk_insert_from_csv(db: AsyncSession, csv_content: str) -> Tuple[int, int, List[str]]:
         """
-        Bulk insert audio records from CSV content.
-
-        The CSV is expected to contain columns: `filename`, `transcription`.
-        Existing filenames are skipped to avoid duplicates. Empty filenames are
-        also skipped.
-
+        Bulk insert audio records from CSV file content.
+        
+        Processes a CSV file containing audio metadata and inserts new records
+        into the database. Existing filenames and invalid entries are skipped.
+        
+        Expected CSV format:
+        - filename: Audio file name (required, must be unique)
+        - transcription: Reference transcription text (optional)
+        
+        Args:
+            db: Database session
+            csv_content: Raw CSV file content as string
+            
         Returns:
-            Tuple[int, int, List[str]]: (inserted_count, skipped_count, skipped_files)
+            Tuple containing (inserted_count, skipped_count, skipped_files_list)
         """
         inserted = 0
         skipped = 0
@@ -246,11 +247,18 @@ class TranscriptionService:
     @staticmethod
     async def create_transcription(db: AsyncSession, transcription_data: TranscriptionCreate) -> Transcriptions:
         """
-        Create a new transcription record.
+        Create a new transcription record with metadata.
         
-        This method creates the transcription record. The database trigger automatically:
-        1. Increments the transcription_count on the audio record
-        2. Can be extended to release the lease by setting leased_until = NOW()
+        Stores the user's transcription along with quality metadata such as
+        background noise, code-mixing, and speaker information. The database
+        automatically updates the parent audio record's transcription count.
+        
+        Args:
+            db: Database session
+            transcription_data: Validated transcription data
+            
+        Returns:
+            Transcriptions: Created transcription record
         """
         # Create the transcription object
         new_transcription = Transcriptions(

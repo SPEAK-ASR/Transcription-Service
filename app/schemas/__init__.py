@@ -1,7 +1,9 @@
 """
-Pydantic schemas for request/response models.
+Pydantic schemas for API request/response models.
 
-Note: Uses Pydantic v2 APIs (`field_validator`, `ConfigDict`).
+This module defines data validation and serialization schemas for the API
+endpoints using Pydantic v2. All models include proper field validation,
+documentation, and type hints.
 """
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -10,7 +12,7 @@ from datetime import datetime
 from uuid import UUID
 
 
-# Speaker gender literal type to match database enum
+# Type definitions
 SpeakerGender = Literal["male", "female", "cannot_recognized"]
 
 

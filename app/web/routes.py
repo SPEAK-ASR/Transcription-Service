@@ -1,5 +1,9 @@
 """
-Web routes for the transcription UI.
+Web UI routes for the transcription interface.
+
+This module provides web routes for the browser-based transcription interface,
+including the main transcription page, form submission handlers, and AJAX
+endpoints for dynamic content loading.
 """
 
 import logging
@@ -15,7 +19,7 @@ from app.services.db_service import AudioService, TranscriptionService
 from app.services.gcs_service import gcs_service
 from app.schemas import TranscriptionCreate
 
-# Speaker gender options to match the database enum and literal type
+# Speaker gender options for form dropdowns
 SPEAKER_GENDER_OPTIONS = ["male", "female", "cannot_recognized"]
 
 logger = logging.getLogger(__name__)

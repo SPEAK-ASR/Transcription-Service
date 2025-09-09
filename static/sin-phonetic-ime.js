@@ -360,7 +360,7 @@
         state.mode = state.mode === 'si' ? 'en' : 'si';
         updateChip();
         finalizeSegment();
-        textarea.focus();
+        // Focus is not needed here - user can click on textarea if they want to type
       });
     }
 
@@ -371,7 +371,7 @@
         state.mode = state.enabled ? 'si' : 'en';
         updateChip();
         finalizeSegment();
-        textarea.focus();
+        // Removed auto-focus to prevent textarea from being focused on page load
       });
     }
 
