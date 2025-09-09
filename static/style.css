@@ -417,6 +417,14 @@ header p {
     }
 }
 
+.transcription-input-section, .metadata-section {
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
 .suitability-section{
     background: #2c0d0db8;
     border: 1px solid #5c000095;
@@ -490,12 +498,12 @@ header p {
 }
 
 /* Form Styles */
-.transcription-form {
+/* .transcription-form {
     background: #1e1e1e;
     padding: 24px;
     border-radius: 8px;
     border: 1px solid #3a3a3a;
-}
+} */
 
 .form-group {
     margin-bottom: 20px;

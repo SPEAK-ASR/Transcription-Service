@@ -52,6 +52,22 @@
         {% if audio %}
         <div class="audio-section">
             
+            <!-- Google Transcription Reference -->
+            {% if audio.google_transcription %}
+            <div class="reference-section">
+                <div class="reference-header">
+                    <h3>Reference Transcription</h3>
+                    <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                        </svg>
+                        Quick Copy
+                    </button>
+                </div>
+                <div class="reference-text">{{ audio.google_transcription }}</div>
+                <small class="reference-note">For reference only. Please provide your own transcription below.</small>
+            </div>
+            {% endif %}
 
             <!-- Audio Player -->
             <div class="audio-player">
@@ -122,73 +138,60 @@
                     </div>
                 </div>               
             </div>
-
-            <div class="suitability-section">
-                <input type="hidden" name="is_audio_suitable" id="audioSuitableField" value="true">
                 
-                <!-- Audio Suitability Check -->
-                <div>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="audioNotSuitable" onchange="handleAudioSuitabilityChange(this)">
-                        <span class="checkmark"></span>
-                        This audio is not suitable for transcription
-                    </label>
-                    <small class="field-note">Check this if the audio has issues that make it impossible to transcribe accurately (e.g., completely inaudible, corrupted, wrong language, etc.)</small>
-                </div>
-            </div>
-
-            <!-- Google Transcription Reference -->
-            {% if audio.google_transcription %}
-            <div class="reference-section">
-                <div class="reference-header">
-                    <h3>Reference Transcription</h3>
-                    <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                        </svg>
-                        Quick Copy
-                    </button>
-                </div>
-                <div class="reference-text">{{ audio.google_transcription }}</div>
-                <small class="reference-note">For reference only. Please provide your own transcription below.</small>
-            </div>
-            {% endif %}
 
             <!-- Transcription Form -->
             <form method="post" action="/submit-transcription" class="transcription-form" id="transcriptionForm">
                 <input type="hidden" name="audio_id" value="{{ audio.audio_id }}">
-                
-                
-                <div class="form-group">
-                    <label for="transcription">Your Transcription *</label>
+                <input type="hidden" name="is_audio_suitable" id="audioSuitableField" value="true">
 
-                    <!-- Built-in Sinhala IME toggle (default OFF) -->
-                    <div class="ime-toggle-container" style="margin-bottom: 8px;">
-                        <span class="ime-toggle-label">Don’t have a Sinhala keyboard? Try the built-in Sinhala phonetic keyboard.</span>
-                        <label class="toggle-switch" aria-label="Enable Sinhala phonetic keyboard">
-                            <input type="checkbox" id="imeToggle" class="toggle-input" />
-                            <span class="toggle-slider">
-                                <span class="toggle-text off">Off</span>
-                                <span class="toggle-text on">On</span>
-                            </span>
-                        </label>
+                <!-- Transcription Input Section -->
+                <div class="transcription-input-section">
+                    <div class="form-group">
+                        <label for="transcription">Your Transcription *</label>
+
+                        <!-- Built-in Sinhala IME toggle (default OFF) -->
+                        <div class="ime-toggle-container" style="margin-bottom: 8px;">
+                            <span class="ime-toggle-label">Don't have a Sinhala keyboard? Try the built-in Sinhala phonetic keyboard.</span>
+                            <label class="toggle-switch" aria-label="Enable Sinhala phonetic keyboard">
+                                <input type="checkbox" id="imeToggle" class="toggle-input" />
+                                <span class="toggle-slider">
+                                    <span class="toggle-text off">Off</span>
+                                    <span class="toggle-text on">On</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Textarea wrapped to host the inline chip "සි | en" -->
+                        <div class="ime-container">
+                            <textarea 
+                                name="transcription" 
+                                id="transcription" 
+                                required 
+                                placeholder="Please type exactly what you hear in the audio..."
+                                rows="4"
+                            ></textarea>
+                            <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">සි | en</button>
+                        </div>
+
+                        <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
                     </div>
-
-                    <!-- Textarea wrapped to host the inline chip "සි | en" -->
-                    <div class="ime-container">
-                        <textarea 
-                            name="transcription" 
-                            id="transcription" 
-                            required 
-                            placeholder="Please type exactly what you hear in the audio..."
-                            rows="4"
-                        ></textarea>
-                        <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">සි | en</button>
-                    </div>
-
-                    <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
                 </div>
 
+                <!-- Audio Suitability Check -->
+                <div class="suitability-section">
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="audioNotSuitable" onchange="handleAudioSuitabilityChange(this)">
+                            <span class="checkmark"></span>
+                            This audio is not suitable for transcription
+                        </label>
+                        <small class="field-note">Check this if the audio has issues that make it impossible to transcribe accurately (e.g., completely inaudible, corrupted, wrong language, etc.)</small>
+                    </div>
+                </div>
+
+                <div class="metadata-section">
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label for="speaker_gender">Speaker Gender *</label>
@@ -223,6 +226,7 @@
                         <span class="checkmark"></span>
                         Multiple speakers are talking at the same time
                     </label>
+                </div>
                 </div>
 
                 <div class="form-actions">
