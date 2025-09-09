@@ -9,6 +9,18 @@ FastAPI service to collect Sinhala Automatic Speech Recognition (ASR) transcript
 - CSV import for audio metadata (filename + optional transcription)
 - Signed URL delivery straight from GCS
 - Clean async SQLAlchemy integration
+- **Audio suitability tracking** - Users can mark audio as unsuitable for transcription (corrupted, wrong language, etc.)
+
+## Recent Updates
+
+### Audio Suitability Feature
+Added the ability to mark audio files as unsuitable for transcription. See [AUDIO_SUITABILITY_FEATURE.md](AUDIO_SUITABILITY_FEATURE.md) for detailed implementation information.
+
+Key features:
+- Checkbox to mark audio as unsuitable before transcription
+- Modal confirmation to prevent accidental submissions
+- Immediate submission when confirmed (skips full transcription form)
+- Database tracking of unsuitable audio files
 
 ## Architecture
 

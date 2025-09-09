@@ -37,10 +37,17 @@ class TranscriptionCreate(BaseModel):
     has_noise: bool = Field(default=False, description="Whether the audio contains noise")
     is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
     is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
+    is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio is suitable for transcription")
     
     @field_validator("transcription")
     @classmethod
-    def validate_transcription_text(cls, v: str) -> str:
+    def validate_transcription_text(cls, v: str, info) -> str:
+        # If audio is not suitable, we allow a default transcription
+        is_audio_suitable = info.data.get('is_audio_suitable', True)
+        if is_audio_suitable is False:
+            return v if v else "Audio not suitable for transcription"
+        
+        # For suitable audio, require actual transcription
         if not v or not v.strip():
             raise ValueError("Transcription text cannot be empty")
         return v.strip()
@@ -57,6 +64,7 @@ class TranscriptionResponse(BaseModel):
     has_noise: bool
     is_code_mixed: bool
     is_speaker_overlappings_exist: bool
+    is_audio_suitable: Optional[bool]
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

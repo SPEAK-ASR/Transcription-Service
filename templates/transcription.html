@@ -120,6 +120,20 @@
                             </svg>
                         </button>
                     </div>
+                </div>               
+            </div>
+
+            <div class="suitability-section">
+                <input type="hidden" name="is_audio_suitable" id="audioSuitableField" value="true">
+                
+                <!-- Audio Suitability Check -->
+                <div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="audioNotSuitable" onchange="handleAudioSuitabilityChange(this)">
+                        <span class="checkmark"></span>
+                        This audio is not suitable for transcription
+                    </label>
+                    <small class="field-note">Check this if the audio has issues that make it impossible to transcribe accurately (e.g., completely inaudible, corrupted, wrong language, etc.)</small>
                 </div>
             </div>
 
@@ -143,6 +157,7 @@
             <!-- Transcription Form -->
             <form method="post" action="/submit-transcription" class="transcription-form" id="transcriptionForm">
                 <input type="hidden" name="audio_id" value="{{ audio.audio_id }}">
+                
                 
                 <div class="form-group">
                     <label for="transcription">Your Transcription *</label>
@@ -233,7 +248,115 @@
         </footer>
     </div>
 
+    <!-- Audio Suitability Confirmation Modal -->
+    <div id="audioSuitabilityModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Audio Suitability</h3>
+                <span class="modal-close" onclick="closeAudioSuitabilityModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>You have indicated that this audio is <strong>not suitable</strong> for transcription.</p>
+                <p>This means the audio has issues such as:</p>
+                <ul>
+                    <li>Completely inaudible or corrupted audio</li>
+                    <li>Wrong language content</li>
+                    <li>No speech content</li>
+                    <li>Other technical issues preventing transcription</li>
+                </ul>
+                <p><strong>Are you sure you want to mark this audio as unsuitable?</strong></p>
+                <p>This will immediately submit the record without requiring transcription.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAudioSuitabilityModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmAudioNotSuitable()">Yes, Mark as Unsuitable</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/script.js"></script>
     <script src="/static/sin-phonetic-ime.js"></script>
+    <script>
+        function handleAudioSuitabilityChange(checkbox) {
+            if (checkbox.checked) {
+                // Show modal for confirmation
+                document.getElementById('audioSuitabilityModal').style.display = 'block';
+            } else {
+                // Reset to suitable
+                document.getElementById('audioSuitableField').value = 'true';
+            }
+        }
+
+        function closeAudioSuitabilityModal() {
+            document.getElementById('audioSuitabilityModal').style.display = 'none';
+            // Uncheck the checkbox
+            document.getElementById('audioNotSuitable').checked = false;
+        }
+
+        async function confirmAudioNotSuitable() {
+            // Set the hidden field to false
+            document.getElementById('audioSuitableField').value = 'false';
+            
+            // Clear required validation from form fields since we're submitting as unsuitable
+            const form = document.getElementById('transcriptionForm');
+            const transcriptionField = document.getElementById('transcription');
+            const genderField = document.getElementById('speaker_gender');
+            
+            // Set default values for submission
+            transcriptionField.value = 'Audio not suitable for transcription';
+            genderField.value = 'cannot_recognized';
+            
+            // Close modal
+            document.getElementById('audioSuitabilityModal').style.display = 'none';
+            
+            try {
+                // Show loading state
+                showNotification('Submitting audio suitability...', 'info', 2000);
+                
+                // Prepare form data
+                const formData = new FormData(form);
+                
+                // Submit via AJAX
+                const response = await fetch('/submit-transcription', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success popup
+                    showSuccessPopup('Audio marked as unsuitable. Loading new audio...');
+                    
+                    // Reset form
+                    resetForm();
+                    
+                    // Load new audio after popup
+                    setTimeout(async () => {
+                        await loadNewAudio();
+                    }, 2000);
+                    
+                } else {
+                    showNotification(result.message, 'error');
+                    // Reset form state on error
+                    resetForm();
+                }
+                
+            } catch (error) {
+                console.error('Error submitting audio suitability:', error);
+                showNotification('Network error. Please check your connection and try again.', 'error');
+                // Reset form state on error
+                resetForm();
+            }
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('audioSuitabilityModal');
+            if (event.target === modal) {
+                closeAudioSuitabilityModal();
+            }
+        }
+    </script>
 </body>
 </html>

@@ -70,6 +70,7 @@ async def create_transcription(
             has_noise=new_transcription.has_noise,
             is_code_mixed=new_transcription.is_code_mixed,
             is_speaker_overlappings_exist=new_transcription.is_speaker_overlappings_exist,
+            is_audio_suitable=new_transcription.is_audio_suitable,
             created_at=new_transcription.created_at
         )
         

@@ -208,7 +208,10 @@ function initializeAudio() {
     
     audioPlayer.addEventListener('abort', function() {
         console.warn('Audio download aborted');
-        showNotification('Audio download was interrupted.', 'error');
+        // Only show notification if it's not during a new audio load
+        if (!window.isLoadingNewAudio) {
+            showNotification('Audio download was interrupted.', 'error');
+        }
     });
 }
 
@@ -227,27 +230,26 @@ function initializeForm() {
         this.style.height = this.scrollHeight + 'px';
     });
     
-    // Form validation
-    transcriptionForm.addEventListener('submit', function(e) {
+    // Form validation and AJAX submission
+    transcriptionForm.addEventListener('submit', async function(e) {
+        e.preventDefault(); // Always prevent default form submission
+        
         const transcription = transcriptionTextarea.value.trim();
         const speakerGender = document.getElementById('speaker_gender').value;
         
         if (!transcription) {
-            e.preventDefault();
             showNotification('Please provide a transcription before submitting.', 'error');
             transcriptionTextarea.focus();
             return;
         }
         
         if (!speakerGender) {
-            e.preventDefault();
             showNotification('Please select the speaker gender.', 'error');
             document.getElementById('speaker_gender').focus();
             return;
         }
         
         if (transcription.length < 3) {
-            e.preventDefault();
             showNotification('Transcription seems too short. Please provide a more detailed transcription.', 'error');
             transcriptionTextarea.focus();
             return;
@@ -255,9 +257,49 @@ function initializeForm() {
         
         // Show loading state
         const submitButton = transcriptionForm.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
         if (submitButton) {
             submitButton.textContent = '⏳ Submitting...';
             submitButton.disabled = true;
+        }
+        
+        try {
+            // Prepare form data
+            const formData = new FormData(transcriptionForm);
+            
+            // Submit transcription via AJAX
+            const response = await fetch('/submit-transcription', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show success popup
+                showSuccessPopup(result.message);
+                
+                // Clear form and reset
+                resetForm();
+                
+                // Load new audio after the popup
+                setTimeout(async () => {
+                    await loadNewAudio();
+                }, 2000);
+                
+            } else {
+                showNotification(result.message, 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error submitting transcription:', error);
+            showNotification('Network error. Please check your connection and try again.', 'error');
+        } finally {
+            // Restore button state
+            if (submitButton) {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }
         }
     });
     
@@ -491,6 +533,45 @@ function toggleMute() {
 }
 
 /**
+ * Show success popup in center of screen
+ */
+function showSuccessPopup(message) {
+    // Remove existing popups
+    const existingPopups = document.querySelectorAll('.success-popup, .success-popup-overlay');
+    existingPopups.forEach(p => p.remove());
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'success-popup-overlay';
+    
+    // Create popup
+    const popup = document.createElement('div');
+    popup.className = 'success-popup';
+    popup.innerHTML = `
+        <span class="icon">✅</span>
+        <div>${message}</div>
+        <div style="margin-top: 8px; font-size: 0.9rem; opacity: 0.8;">Loading new audio...</div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(overlay);
+    document.body.appendChild(popup);
+    
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+        if (popup.parentElement) {
+            popup.style.animation = 'successPopupIn 0.3s ease reverse';
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                popup.remove();
+                overlay.remove();
+            }, 300);
+        }
+    }, 1800);
+}
+
+/**
  * Show notification message
  */
 function showNotification(message, type = 'info', duration = 5000) {
@@ -611,9 +692,34 @@ function initializeIME() {
 
     // Auto-enable IME on desktop devices
     if (isDesktop()) {
-        imeToggle.checked = true;
-        // Trigger change event to activate the IME
-        imeToggle.dispatchEvent(new Event('change'));
+        // Use setTimeout to ensure the IME handler is properly set up before triggering
+        setTimeout(() => {
+            imeToggle.checked = true;
+            // Trigger change event to activate the IME
+            imeToggle.dispatchEvent(new Event('change'));
+        }, 100);
+    }
+}
+
+/**
+ * Re-enable IME for desktop devices (called after form reset)
+ */
+function reEnableIME() {
+    const imeToggle = document.getElementById('imeToggle');
+    if (!imeToggle) return;
+
+    // Detect if device is desktop (non-mobile)
+    function isDesktop() {
+        return !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    }
+
+    // Auto-enable IME on desktop devices after form reset
+    if (isDesktop()) {
+        setTimeout(() => {
+            imeToggle.checked = true;
+            // Trigger change event to activate the IME
+            imeToggle.dispatchEvent(new Event('change'));
+        }, 50);
     }
 }
 
@@ -629,6 +735,160 @@ function copyReferenceText() {
         transcriptionTextarea.focus();
         transcriptionTextarea.dispatchEvent(new Event('input'));
         showNotification('Reference text copied. Please review and edit as needed.', 'info');
+    }
+}
+
+/**
+ * Reset the transcription form
+ */
+function resetForm() {
+    const transcriptionForm = document.getElementById('transcriptionForm');
+    if (transcriptionForm) {
+        transcriptionForm.reset();
+        
+        // Reset the audio suitability checkbox and hidden field
+        const audioNotSuitable = document.getElementById('audioNotSuitable');
+        const audioSuitableField = document.getElementById('audioSuitableField');
+        if (audioNotSuitable) audioNotSuitable.checked = false;
+        if (audioSuitableField) audioSuitableField.value = 'true';
+        
+        // Reset textarea height
+        const transcriptionTextarea = document.getElementById('transcription');
+        if (transcriptionTextarea) {
+            transcriptionTextarea.style.height = 'auto';
+        }
+        
+        // Re-enable IME for desktop devices
+        reEnableIME();
+    }
+}
+
+/**
+ * Load new audio file
+ */
+async function loadNewAudio() {
+    try {
+        // Set flag to prevent abort notification during audio load
+        window.isLoadingNewAudio = true;
+        
+        showNotification('Loading new audio...', 'info', 2000);
+        
+        const response = await fetch('/api/new-audio');
+        const result = await response.json();
+        
+        if (result.success && result.audio) {
+            // Update page content with new audio
+            await updatePageWithNewAudio(result.audio);
+            
+            // Scroll to top of the page
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+            
+            showNotification('New audio loaded successfully!', 'success', 2000);
+        } else {
+            showNotification(result.message || 'No more audio files available.', 'info');
+            // Hide audio section if no audio available
+            hideAudioSection();
+        }
+        
+    } catch (error) {
+        console.error('Error loading new audio:', error);
+        showNotification('Error loading new audio. Please refresh the page.', 'error');
+    } finally {
+        // Clear the flag after a short delay to allow audio loading to complete
+        setTimeout(() => {
+            window.isLoadingNewAudio = false;
+        }, 1000);
+    }
+}
+
+/**
+ * Update page content with new audio data
+ */
+async function updatePageWithNewAudio(audioData) {
+    // Update hidden audio_id field
+    const audioIdField = document.querySelector('input[name="audio_id"]');
+    if (audioIdField) {
+        audioIdField.value = audioData.audio_id;
+    }
+    
+    // Update audio player sources
+    const audioPlayer = document.getElementById('audioPlayer');
+    if (audioPlayer) {
+        const sources = audioPlayer.querySelectorAll('source');
+        sources.forEach(source => {
+            source.src = audioData.gcs_signed_url;
+        });
+        
+        // Reset audio player state
+        audioPlayer.currentTime = 0;
+        audioPlayer.load(); // Reload the audio element
+        
+        // Reset progress bar
+        const progressBar = document.getElementById('progressBar');
+        const progressHandle = document.getElementById('progressHandle');
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressHandle) progressHandle.style.left = '0%';
+        
+        // Reset time displays
+        const currentTime = document.getElementById('currentTime');
+        const totalTime = document.getElementById('totalTime');
+        const audioDuration = document.getElementById('audioDuration');
+        if (currentTime) currentTime.textContent = '0:00';
+        if (totalTime) totalTime.textContent = '0:00';
+        if (audioDuration) audioDuration.textContent = '--:--';
+        
+        // Reset play button
+        const playIcon = document.querySelector('.play-icon');
+        const pauseIcon = document.querySelector('.pause-icon');
+        if (playIcon) playIcon.style.display = 'block';
+        if (pauseIcon) pauseIcon.style.display = 'none';
+    }
+    
+    // Update reference transcription
+    const referenceSection = document.querySelector('.reference-section');
+    const referenceText = document.querySelector('.reference-text');
+    
+    if (audioData.google_transcription && referenceSection && referenceText) {
+        referenceText.textContent = audioData.google_transcription;
+        referenceSection.style.display = 'block';
+    } else if (referenceSection) {
+        referenceSection.style.display = 'none';
+    }
+    
+    // Show audio section if it was hidden
+    const audioSection = document.querySelector('.audio-section');
+    const noAudioSection = document.querySelector('.no-audio');
+    if (audioSection) audioSection.style.display = 'block';
+    if (noAudioSection) noAudioSection.style.display = 'none';
+}
+
+/**
+ * Hide audio section when no audio is available
+ */
+function hideAudioSection() {
+    const audioSection = document.querySelector('.audio-section');
+    const noAudioSection = document.querySelector('.no-audio');
+    
+    if (audioSection) audioSection.style.display = 'none';
+    if (noAudioSection) {
+        noAudioSection.style.display = 'block';
+    } else {
+        // Create no audio message if it doesn't exist
+        const container = document.querySelector('.container');
+        if (container) {
+            const noAudioDiv = document.createElement('div');
+            noAudioDiv.className = 'no-audio';
+            noAudioDiv.innerHTML = `
+                <div class="no-audio-icon">♪</div>
+                <h2>No More Audio Available</h2>
+                <p>All available audio files have been transcribed.</p>
+                <button onclick="window.location.reload()" class="btn btn-primary">Refresh Page</button>
+            `;
+            container.appendChild(noAudioDiv);
+        }
     }
 }
 

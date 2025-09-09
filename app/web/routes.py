@@ -4,7 +4,7 @@ Web routes for the transcription UI.
 
 import logging
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -75,7 +75,7 @@ async def transcription_home(
         )
 
 
-@router.post("/submit-transcription", response_class=HTMLResponse)
+@router.post("/submit-transcription")
 async def submit_transcription(
     request: Request,
     audio_id: str = Form(...),
@@ -84,10 +84,11 @@ async def submit_transcription(
     has_noise: bool = Form(default=False),
     is_code_mixed: bool = Form(default=False),
     is_speaker_overlapping: bool = Form(default=False),
+    is_audio_suitable: Optional[bool] = Form(default=True),
     db: AsyncSession = Depends(get_async_database_session)
 ):
     """
-    Submit a transcription and load a new random audio file.
+    Submit a transcription and return JSON response.
     """
     try:
         # Validate and create transcription
@@ -97,7 +98,8 @@ async def submit_transcription(
             speaker_gender=speaker_gender,  # Now just a string, not enum
             has_noise=has_noise,
             is_code_mixed=is_code_mixed,
-            is_speaker_overlappings_exist=is_speaker_overlapping
+            is_speaker_overlappings_exist=is_speaker_overlapping,
+            is_audio_suitable=is_audio_suitable
         )
         
         # Submit the transcription
@@ -107,12 +109,59 @@ async def submit_transcription(
         
         logger.info(f"Transcription submitted: {new_transcription.trans_id}")
         
-        # Get a new random audio file for the next transcription
+        # Return success JSON response
+        return JSONResponse(
+            content={
+                "success": True,
+                "message": "Transcription submitted successfully!"
+            },
+            status_code=200
+        )
+        
+    except ValueError as ve:
+        logger.warning(f"Validation error in transcription submission: {ve}")
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": f"Validation error: {str(ve)}"
+            },
+            status_code=400
+        )
+    except HTTPException as he:
+        logger.warning(f"HTTP error in transcription submission: {he.detail}")
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": he.detail
+            },
+            status_code=he.status_code
+        )
+    except Exception as e:
+        logger.error(f"Error submitting transcription: {e}")
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": "An error occurred while submitting your transcription. Please try again."
+            },
+            status_code=500
+        )
+
+
+@router.get("/api/new-audio")
+async def get_new_audio_api(
+    db: AsyncSession = Depends(get_async_database_session)
+):
+    """
+    API endpoint to get a new random audio file as JSON.
+    """
+    try:
+        # Get a random audio file that needs transcription
         audio_file = await AudioService.get_random_audio_for_transcription(db)
         
-        audio_data = None
         if audio_file:
+            # Generate signed URL for the audio file
             signed_url = await gcs_service.generate_signed_url(audio_file.audio_filename)
+            
             audio_data = {
                 "audio_id": str(audio_file.audio_id),
                 "audio_filename": audio_file.audio_filename,
@@ -120,77 +169,32 @@ async def submit_transcription(
                 "transcription_count": audio_file.transcription_count,
                 "gcs_signed_url": signed_url
             }
-        
-        return templates.TemplateResponse(
-            "transcription.html",
-            {
-                "request": request,
-                "audio": audio_data,
-                "speaker_genders": SPEAKER_GENDER_OPTIONS,
-                "success_message": "Transcription submitted successfully! Here's your next audio file.",
-                "error_message": None
-            }
-        )
-        
-    except ValueError as ve:
-        logger.warning(f"Validation error in transcription submission: {ve}")
-        error_message = f"Validation error: {str(ve)}"
-    except HTTPException as he:
-        logger.warning(f"HTTP error in transcription submission: {he.detail}")
-        error_message = he.detail
-    except Exception as e:
-        logger.error(f"Error submitting transcription: {e}")
-        error_message = "An error occurred while submitting your transcription. Please try again."
-    
-    # On error, try to reload the same audio or get a new one
-    try:
-        # Try to get the current audio file first
-        current_audio = None
-        if audio_id:
-            from sqlalchemy import select
-            from app.models import Audio
-            result = await db.execute(select(Audio).where(Audio.audio_id == UUID(audio_id)))
-            current_audio = result.scalar_one_or_none()
             
-            if current_audio and current_audio.transcription_count < 2:
-                signed_url = await gcs_service.generate_signed_url(current_audio.audio_filename)
-                audio_data = {
-                    "audio_id": str(current_audio.audio_id),
-                    "audio_filename": current_audio.audio_filename,
-                    "google_transcription": current_audio.google_transcription,
-                    "transcription_count": current_audio.transcription_count,
-                    "gcs_signed_url": signed_url
+            logger.info(f"Serving new audio file via API: {audio_file.audio_filename}")
+            
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "audio": audio_data
                 }
-            else:
-                # Get a new random audio file
-                audio_file = await AudioService.get_random_audio_for_transcription(db)
-                if audio_file:
-                    signed_url = await gcs_service.generate_signed_url(audio_file.audio_filename)
-                    audio_data = {
-                        "audio_id": str(audio_file.audio_id),
-                        "audio_filename": audio_file.audio_filename,
-                        "google_transcription": audio_file.google_transcription,
-                        "transcription_count": audio_file.transcription_count,
-                        "gcs_signed_url": signed_url
-                    }
-                else:
-                    audio_data = None
+            )
         else:
-            audio_data = None
+            return JSONResponse(
+                content={
+                    "success": False,
+                    "message": "No audio files available for transcription."
+                }
+            )
             
-    except Exception:
-        audio_data = None
-    
-    return templates.TemplateResponse(
-        "transcription.html",
-        {
-            "request": request,
-            "audio": audio_data,
-            "speaker_genders": SPEAKER_GENDER_OPTIONS,
-            "success_message": None,
-            "error_message": error_message
-        }
-    )
+    except Exception as e:
+        logger.error(f"Error getting new audio via API: {e}")
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": "Error loading audio file. Please try again."
+            },
+            status_code=500
+        )
 
 
 @router.get("/new-audio", response_class=HTMLResponse)

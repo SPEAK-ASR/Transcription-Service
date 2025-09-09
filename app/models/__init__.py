@@ -43,6 +43,7 @@ class Transcriptions(Base):
     # Audio quality and content flags
     has_noise = Column(Boolean, default=False)
     is_code_mixed = Column(Boolean, default=False)
+    is_audio_suitable = Column(Boolean, nullable=True, default=True)
     
     # Speaker information
     is_speaker_overlappings_exist = Column(Boolean, default=False)

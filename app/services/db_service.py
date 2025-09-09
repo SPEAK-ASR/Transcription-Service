@@ -260,6 +260,7 @@ class TranscriptionService:
             has_noise=transcription_data.has_noise,
             is_code_mixed=transcription_data.is_code_mixed,
             is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
+            is_audio_suitable=transcription_data.is_audio_suitable,
         )
 
         db.add(new_transcription)

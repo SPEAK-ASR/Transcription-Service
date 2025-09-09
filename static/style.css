@@ -417,6 +417,14 @@ header p {
     }
 }
 
+.suitability-section{
+    background: #2c0d0db8;
+    border: 1px solid #5c000095;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
 /* Reference Section */
 .reference-section {
     background: #1e1e1e;
@@ -855,5 +863,226 @@ footer {
     .btn {
         padding: 12px 20px;
         font-size: 0.9rem;
+    }
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+}
+
+.modal-content {
+    background: #1e1e1e;
+    margin: 5% auto 0 auto;
+    padding: 0;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #3a3a3a;
+    background: #2a2a2a;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.modal-close {
+    color: #888;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover,
+.modal-close:focus {
+    color: #e0e0e0;
+}
+
+.modal-body {
+    padding: 20px;
+    color: #e0e0e0;
+    line-height: 1.5;
+    font-size: 0.85rem;
+}
+
+.modal-body p {
+    margin-bottom: 10px;
+}
+
+.modal-body ul {
+    margin: 10px 0;
+    padding-left: 18px;
+    color: #c0c0c0;
+}
+
+.modal-body li {
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+}
+
+.modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid #3a3a3a;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #1a1a1a;
+    border-radius: 0 0 8px 8px;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: #fff;
+    border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+    border-color: #c82333;
+}
+
+/* Success Popup Notification Styles */
+.success-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #1a2e1a;
+    border: 2px solid #2d5a2d;
+    color: #7cb87c;
+    padding: 24px 32px;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    min-width: 300px;
+    animation: successPopupIn 0.4s ease;
+}
+
+.success-popup .icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    display: block;
+}
+
+@keyframes successPopupIn {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.success-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1999;
+}
+
+/* Loading states for smooth transitions */
+.loading-new-audio {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading-new-audio .audio-section {
+    position: relative;
+}
+
+.loading-new-audio .audio-section::after {
+    content: 'Loading new audio...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    z-index: 100;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 3% auto 0 auto;
+        max-width: 400px;
+    }
+    
+    .modal-header {
+        padding: 14px 16px;
+    }
+    
+    .modal-header h3 {
+        font-size: 0.9rem;
+    }
+    
+    .modal-body {
+        padding: 16px;
+        font-size: 0.8rem;
+    }
+    
+    .modal-body li {
+        font-size: 0.75rem;
+    }
+    
+    .modal-footer {
+        padding: 12px 16px;
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+        font-size: 0.85rem;
+        padding: 10px 16px;
     }
 }
