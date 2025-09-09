@@ -410,27 +410,6 @@ function replayAudio() {
 /**
  * Adjust audio playback speed
  */
-function adjustSpeed(speed) {
-    const audioPlayer = document.getElementById('audioPlayer');
-    if (audioPlayer) {
-        audioPlayer.playbackRate = speed;
-        
-        // Update button states
-        document.querySelectorAll('.audio-controls .btn-secondary').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Find and highlight the active speed button
-        document.querySelectorAll('.audio-controls .btn-secondary').forEach(btn => {
-            if (btn.textContent.includes(speed + 'x')) {
-                btn.classList.add('active');
-            }
-        });
-        
-        showNotification(`Playback speed set to ${speed}x`, 'success', 2000);
-    }
-}
-
 /**
  * Toggle audio play/pause
  */
@@ -817,6 +796,9 @@ async function updatePageWithNewAudio(audioData) {
     // Update audio player sources
     const audioPlayer = document.getElementById('audioPlayer');
     if (audioPlayer) {
+        // Store current playback rate before resetting (default to 1.0 if not set)
+        const currentPlaybackRate = audioPlayer.playbackRate || 1.0;
+        
         const sources = audioPlayer.querySelectorAll('source');
         sources.forEach(source => {
             source.src = audioData.gcs_signed_url;
@@ -825,6 +807,31 @@ async function updatePageWithNewAudio(audioData) {
         // Reset audio player state
         audioPlayer.currentTime = 0;
         audioPlayer.load(); // Reload the audio element
+        
+        // Restore playback rate after audio loads
+        audioPlayer.addEventListener('loadedmetadata', function restoreSpeed() {
+            // Small delay to ensure audio element is fully ready
+            setTimeout(() => {
+                audioPlayer.playbackRate = currentPlaybackRate;
+                
+                // Update speed display
+                const speedEl = document.getElementById('audioSpeed');
+                if (speedEl) {
+                    speedEl.textContent = currentPlaybackRate + 'x';
+                }
+                
+                // Update button states to match the restored speed
+                document.querySelectorAll('.speed-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (Math.abs(parseFloat(btn.dataset.speed) - currentPlaybackRate) < 0.01) {
+                        btn.classList.add('active');
+                    }
+                });
+            }, 50);
+            
+            // Remove event listener to avoid multiple calls
+            audioPlayer.removeEventListener('loadedmetadata', restoreSpeed);
+        });
         
         // Reset progress bar
         const progressBar = document.getElementById('progressBar');
