@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Transcription Tool</title>
+    <title>Audio Transcription</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -12,6 +12,26 @@
             <h1>Audio Transcription</h1>
             <p>Listen and transcribe with metadata</p>
         </header>
+
+        <!-- Top-of-page Transcription Guidelines -->
+        <section class="guidelines" aria-labelledby="guidelines-title" id="guidelines">
+            <div class="guidelines-header">
+                <h2 id="guidelines-title">Transcription Guidelines</h2>
+                <button type="button" class="guidelines-toggle" id="guidelinesToggle" aria-controls="guidelinesBody" aria-expanded="true" title="Collapse guidelines">Hide</button>
+            </div>
+            <div class="guidelines-body" id="guidelinesBody">
+                <ul>
+                    <li>Write the full transcription in <span class="highlight">Sinhala</span> with correct spelling and punctuation.</li>
+                    <li>If you lack a Sinhala keyboard, enable the <span class="highlight">built‑in Sinhala phonetic keyboard</span> (toggle above the textbox) and type phonetically.</li>
+                    <li>Use the Google reference transcription <span class="highlight">for reference only</span>. It is often inaccurate — please listen and correct.</li>
+                    <li>Keep <span class="highlight">English words in English</span> when spoken. Quickly switch Sinhala/English via the chip in the textbox or press <kbd>Ctrl</kbd> + <kbd>Space</kbd>.</li>
+                    <li><span class="highlight">Ignore hesitations/fillers</span> like “ම්ම්…” when they don’t add meaning.<br>
+                        Example: “අද මම ම්ම්ම්ම්.... මොනවද කන්නේ.” → “අද මම මොනවද කන්නේ.”
+                    </li>
+                    <li>Provide <span class="highlight">metadata</span> after transcribing: speaker gender, background noise, code‑mixed content, overlapping speakers.</li>
+                </ul>
+            </div>
+        </section>
 
         <!-- Messages -->
         {% if success_message %}
@@ -31,14 +51,7 @@
         <!-- Main Content -->
         {% if audio %}
         <div class="audio-section">
-            <div class="audio-info">
-                <div class="audio-stats">
-                    <span class="stat">{{ audio.transcription_count }}/2 transcriptions</span>
-                    {% if audio.google_transcription %}
-                    <span class="stat">Reference available</span>
-                    {% endif %}
-                </div>
-            </div>
+            
 
             <!-- Audio Player -->
             <div class="audio-player">
@@ -113,7 +126,15 @@
             <!-- Google Transcription Reference -->
             {% if audio.google_transcription %}
             <div class="reference-section">
-                <h3>Reference Transcription</h3>
+                <div class="reference-header">
+                    <h3>Reference Transcription</h3>
+                    <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                        </svg>
+                        Quick Copy
+                    </button>
+                </div>
                 <div class="reference-text">{{ audio.google_transcription }}</div>
                 <small class="reference-note">For reference only. Please provide your own transcription below.</small>
             </div>
@@ -127,11 +148,16 @@
                     <label for="transcription">Your Transcription *</label>
 
                     <!-- Built-in Sinhala IME toggle (default OFF) -->
-                    <label class="checkbox-label" for="imeToggle" style="margin-bottom: 8px;">
-                        <input type="checkbox" id="imeToggle" />
-                        <span class="checkmark"></span>
-                        Don’t have a Sinhala keyboard, try the built-in Sinhala phonetic keyboard.
-                    </label>
+                    <div class="ime-toggle-container" style="margin-bottom: 8px;">
+                        <span class="ime-toggle-label">Don’t have a Sinhala keyboard? Try the built-in Sinhala phonetic keyboard.</span>
+                        <label class="toggle-switch" aria-label="Enable Sinhala phonetic keyboard">
+                            <input type="checkbox" id="imeToggle" class="toggle-input" />
+                            <span class="toggle-slider">
+                                <span class="toggle-text off">Off</span>
+                                <span class="toggle-text on">On</span>
+                            </span>
+                        </label>
+                    </div>
 
                     <!-- Textarea wrapped to host the inline chip "සි | en" -->
                     <div class="ime-container">

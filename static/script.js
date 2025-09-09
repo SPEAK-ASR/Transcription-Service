@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeAudio();
     initializeForm();
     initializeCustomAudioPlayer();
+    initializeGuidelines();
+    initializeIME();
     
     // Auto-hide messages after 5 seconds
     hideMessagesAfterDelay();
@@ -171,15 +173,15 @@ function initializeAudio() {
     });
     
     // Show loading state
-    audioPlayer.addEventListener('loadstart', function() {
-        console.log('Audio loading started...');
-        showNotification('Loading audio...', 'info', 2000);
-    });
+    // audioPlayer.addEventListener('loadstart', function() {
+    //     console.log('Audio loading started...');
+    //     showNotification('Loading audio...', 'info', 2000);
+    // });
     
-    audioPlayer.addEventListener('canplay', function() {
-        console.log('Audio ready to play');
-        showNotification('Audio loaded successfully', 'success', 2000);
-    });
+    // audioPlayer.addEventListener('canplay', function() {
+    //     console.log('Audio ready to play');
+    //     showNotification('Audio loaded successfully', 'success', 2000);
+    // });
     
     audioPlayer.addEventListener('loadeddata', function() {
         console.log('Audio data loaded');
@@ -558,6 +560,61 @@ function hideMessagesAfterDelay() {
             }
         }, 5000);
     });
+}
+
+/**
+ * Initialize collapsible Guidelines section
+ */
+function initializeGuidelines() {
+    const section = document.getElementById('guidelines');
+    const toggle = document.getElementById('guidelinesToggle');
+    const body = document.getElementById('guidelinesBody');
+    if (!section || !toggle || !body) return;
+
+    const STORAGE_KEY = 'guidelinesCollapsed';
+    const setCollapsed = (collapsed) => {
+        if (collapsed) {
+            section.classList.add('collapsed');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.textContent = 'Show';
+        } else {
+            section.classList.remove('collapsed');
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.textContent = 'Hide';
+        }
+        try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+    };
+
+    // Restore previous state
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === '1') setCollapsed(true);
+    } catch (_) {}
+
+    toggle.addEventListener('click', function() {
+        const collapsed = !section.classList.contains('collapsed');
+        setCollapsed(collapsed);
+    });
+}
+
+/**
+ * Initialize IME - auto-enable on desktop devices
+ */
+function initializeIME() {
+    const imeToggle = document.getElementById('imeToggle');
+    if (!imeToggle) return;
+
+    // Detect if device is desktop (non-mobile)
+    function isDesktop() {
+        return !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    }
+
+    // Auto-enable IME on desktop devices
+    if (isDesktop()) {
+        imeToggle.checked = true;
+        // Trigger change event to activate the IME
+        imeToggle.dispatchEvent(new Event('change'));
+    }
 }
 
 /**
