@@ -548,9 +548,9 @@ function showSuccessPopup(message) {
     const popup = document.createElement('div');
     popup.className = 'success-popup';
     popup.innerHTML = `
-        <span class="icon">✅</span>
+        <span class="icon">✓</span>
         <div>${message}</div>
-        <div style="margin-top: 8px; font-size: 0.9rem; opacity: 0.8;">Loading new audio...</div>
+        <div style="margin-top: 8px; font-size: 0.9rem; opacity: 0.7;">Loading new audio...</div>
     `;
     
     // Add to page
