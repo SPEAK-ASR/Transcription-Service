@@ -19,15 +19,25 @@
     "ii": "ී",
     "u": "ු",
     "uu": "ූ",
-    "R": "ෘ",
-    "Ru": "ෲ",
+    "ru": "ෘ",
+    "ruu": "ෲ",
+    "ra": "්‍ර",
+    "ri": "්‍රි",
+    "rii": "්‍රී",
+    "raa": "්‍රා",
+    "rA": "්‍රැ",
+    "rAA": "්‍රෑ",
+    "rAa": "්‍රෑ",
+    "ya": "්‍ය",
+    "yaa": "්‍යා",
+    "yu": "්‍යු",
+    "yuu": "්‍යූ",
     "e": "ෙ",
     "ee": "ේ",
     "ai": "ෛ",
     "o": "ො",
     "oo": "ෝ",
     "au": "ෞ",
-    "ou": "ෞ",
   };
 
   const INDEP_VOWELS = {
@@ -139,10 +149,6 @@
 
       // Recognize zn -> anusvara
       if (rest.startsWith('zn')) { out += "ං"; i += 2; continue; }
-
-      // Specific clusters only requested: kya, kra
-      if (rest.startsWith('kya')) { out += "ක්" + ZWJ + "ය"; i += 3; continue; } // ක්‍ය
-      if (rest.startsWith('kra')) { out += "ක්" + ZWJ + "ර"; i += 3; continue; } // ක්‍ර
 
       // Special nasal/other clusters
       let matched = false;
