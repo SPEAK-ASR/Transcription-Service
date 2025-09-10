@@ -109,20 +109,21 @@
     "q": "ද", // alias
   };
 
-  // Special nasal/other clusters provided
-  const SPECIAL_CLUSTERS = [
-    { key: "zga", val: "ඟ" },
-    { key: "zja", val: "ඦ" },
-    { key: "zda", val: "ඬ" },
-    { key: "zdha", val: "ඳ" },
-    { key: "zqa", val: "ඳ" },
-    { key: "zka", val: "ඤ" },
-    { key: "zha", val: "ඥ" },
-    { key: "Ba", val: "ඹ" },
-  ];
+  // Special consonant clusters (without inherent 'a')
+  const SPECIAL_CONSONANTS = {
+    "zdh": "ඳ",
+    "zg": "ඟ",
+    "zj": "ඦ", 
+    "zd": "ඬ",
+    "zq": "ඳ",
+    "zk": "ඤ",
+    "zh": "ඥ",
+    "B": "ඹ",
+  };
 
   // Helper: longest-first keys for consonants
   const CONS_KEYS = Object.keys(CONS_MAP).sort((a, b) => b.length - a.length);
+  const SPECIAL_CONS_KEYS = Object.keys(SPECIAL_CONSONANTS).sort((a, b) => b.length - a.length);
 
   // Vowel keys sorted by length for greedy match
   const VOW_KEYS = Object.keys(VOWEL_SIGNS).sort((a, b) => b.length - a.length);
@@ -151,24 +152,46 @@
       // Recognize zn -> anusvara
       if (rest.startsWith('zn')) { out += "ං"; i += 2; continue; }
 
-      // Special nasal/other clusters
-      let matched = false;
-      for (const sc of SPECIAL_CLUSTERS) {
-        if (rest.startsWith(sc.key)) {
-          out += sc.val;
-          i += sc.key.length;
-          matched = true;
-          break;
-        }
-      }
-      if (matched) continue;
-
       // Handle single-letter specials first
       if (c === 'x') { out += "ං"; i += 1; continue; }
       if (c === 'X') { out += "ඞ"; i += 1; continue; }
       if (c === 'H') { out += "ඃ"; i += 1; continue; }
 
-      // Consonant + vowel
+      // Check special consonants first (they can be longer than regular consonants)
+      let specialConsKey = null;
+      for (const k of SPECIAL_CONS_KEYS) {
+        if (rest.startsWith(k)) { specialConsKey = k; break; }
+      }
+
+      if (specialConsKey) {
+        const base = SPECIAL_CONSONANTS[specialConsKey];
+        i += specialConsKey.length;
+        const after = roman.slice(i);
+
+        // Try to match longest vowel following
+        let vPat = null;
+        for (const vk of VOW_KEYS) {
+          if (vk && after.startsWith(vk)) { vPat = vk; break; }
+        }
+        // Accept empty vowel only if explicitly 'a' follows or none matches
+        if (vPat) {
+          i += vPat.length;
+          const sign = VOWEL_SIGNS[vPat] || "";
+          if (sign) out += base + sign; else out += base; // 'a' maps to inherent
+        } else {
+          // No vowel matched, check for single-letter vowels
+          // If the next char is 'a' handle as inherent
+          if (after.startsWith('a')) {
+            i += 1; // consume 'a'
+            out += base; // inherent 'a'
+          } else {
+            out += base + HAL; // bare consonant
+          }
+        }
+        continue;
+      }
+
+      // Regular consonant + vowel
       let consKey = null;
       for (const k of CONS_KEYS) {
         if (rest.startsWith(k)) { consKey = k; break; }
