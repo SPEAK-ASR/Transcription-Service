@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeCustomAudioPlayer();
     initializeGuidelines();
     initializeIME();
+    initializeSecretShortcuts();
     
     // Auto-hide messages after 5 seconds
     hideMessagesAfterDelay();
@@ -945,3 +946,32 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+/**
+ * Initialize secret keyboard shortcuts for development team
+ */
+function initializeSecretShortcuts() {
+    document.addEventListener('keydown', function(event) {
+        // Ctrl + ` (backtick) to toggle reference transcription visibility
+        if (event.ctrlKey && event.code === 'Backquote') {
+            event.preventDefault();
+            toggleReferenceTranscription();
+        }
+    });
+}
+
+/**
+ * Toggle reference transcription visibility (secret feature for dev team)
+ */
+function toggleReferenceTranscription() {
+    const referenceSection = document.getElementById('referenceSection');
+    if (referenceSection) {
+        if (referenceSection.style.display === 'none' || referenceSection.style.display === '') {
+            referenceSection.style.display = 'block';
+            showNotification('Reference transcription revealed (dev mode)', 'info', 2000);
+        } else {
+            referenceSection.style.display = 'none';
+            showNotification('Reference transcription hidden', 'info', 2000);
+        }
+    }
+}

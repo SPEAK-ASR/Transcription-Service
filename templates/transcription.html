@@ -22,9 +22,9 @@
             </div>
             <div class="guidelines-body" id="guidelinesBody">
                 <ul>
-                    <li>Write the full transcription in <span class="highlight">Sinhala</span> with correct spelling and punctuation.</li>
+                    <li>Listen carefully to the audio and transcribe exactly what you hear. <span class="highlight">Focus on accuracy</span> and correct spelling.</li>
+                    <li>Write the full transcription in <span class="highlight">Sinhala (Not Singlish)</span></li>
                     <li>If you lack a Sinhala keyboard, enable the <span class="highlight">built‑in Sinhala phonetic keyboard</span> (toggle above the textbox) and type phonetically.</li>
-                    <li>Use the Google reference transcription <span class="highlight">for reference only</span>. It is often inaccurate — please listen and correct.</li>
                     <li>Keep <span class="highlight">English words in English</span> when spoken. Quickly switch Sinhala/English via the chip in the textbox or press <kbd>Ctrl</kbd> + <kbd>Space</kbd>.</li>
                     <li><span class="highlight">Ignore hesitations/fillers</span> like “ම්ම්…” when they don’t add meaning.<br>
                         Example: “අද මම ම්ම්ම්ම්.... මොනවද කන්නේ.” → “අද මම මොනවද කන්නේ.”
@@ -53,9 +53,9 @@
         {% if audio %}
         <div class="audio-section">
             
-            <!-- Google Transcription Reference -->
+            <!-- Google Transcription Reference (Hidden by default, shown with Ctrl+`) -->
             {% if audio.google_transcription %}
-            <div class="reference-section">
+            <div class="reference-section" id="referenceSection" style="display: none;">
                 <div class="reference-header">
                     <h3>Reference Transcription</h3>
                     <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
@@ -66,7 +66,7 @@
                     </button>
                 </div>
                 <div class="reference-text">{{ audio.google_transcription }}</div>
-                <small class="reference-note">For reference only. Please provide your own transcription below.</small>
+                <small class="reference-note">Development reference - not visible to regular users.</small>
             </div>
             {% endif %}
 
