@@ -1,4 +1,7 @@
 // Audio player controls and form enhancements
+// Global state for reference transcription visibility (dev feature)
+let isReferenceTranscriptionVisible = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     const audioPlayer = document.getElementById('audioPlayer');
     const transcriptionForm = document.getElementById('transcriptionForm');
@@ -855,13 +858,14 @@ async function updatePageWithNewAudio(audioData) {
         if (pauseIcon) pauseIcon.style.display = 'none';
     }
     
-    // Update reference transcription
+    // Update reference transcription content but preserve visibility state
     const referenceSection = document.querySelector('.reference-section');
     const referenceText = document.querySelector('.reference-text');
     
     if (audioData.google_transcription && referenceSection && referenceText) {
         referenceText.textContent = audioData.google_transcription;
-        referenceSection.style.display = 'block';
+        // Only show if dev has already enabled it via secret shortcut
+        referenceSection.style.display = isReferenceTranscriptionVisible ? 'block' : 'none';
     } else if (referenceSection) {
         referenceSection.style.display = 'none';
     }
@@ -968,9 +972,11 @@ function toggleReferenceTranscription() {
     if (referenceSection) {
         if (referenceSection.style.display === 'none' || referenceSection.style.display === '') {
             referenceSection.style.display = 'block';
+            isReferenceTranscriptionVisible = true;
             showNotification('Reference transcription revealed (dev mode)', 'info', 2000);
         } else {
             referenceSection.style.display = 'none';
+            isReferenceTranscriptionVisible = false;
             showNotification('Reference transcription hidden', 'info', 2000);
         }
     }
