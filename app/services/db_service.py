@@ -269,6 +269,7 @@ class TranscriptionService:
             is_code_mixed=transcription_data.is_code_mixed,
             is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
             is_audio_suitable=transcription_data.is_audio_suitable,
+            admin=transcription_data.admin,
         )
 
         db.add(new_transcription)

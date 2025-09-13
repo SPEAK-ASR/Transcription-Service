@@ -14,6 +14,7 @@ from uuid import UUID
 
 # Type definitions
 SpeakerGender = Literal["male", "female", "cannot_recognized"]
+AdminName = Literal["chirath", "rusira", "kokila", "sahan"]
 
 
 class AudioResponse(BaseModel):
@@ -40,6 +41,7 @@ class TranscriptionCreate(BaseModel):
     is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
     is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
     is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio is suitable for transcription")
+    admin: Optional[AdminName] = Field(default=None, description="Admin attribution if submitted by an admin")
     
     @field_validator("transcription")
     @classmethod
@@ -67,6 +69,7 @@ class TranscriptionResponse(BaseModel):
     is_code_mixed: bool
     is_speaker_overlappings_exist: bool
     is_audio_suitable: Optional[bool]
+    admin: Optional[AdminName]
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

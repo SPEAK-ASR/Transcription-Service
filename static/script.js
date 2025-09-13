@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeCustomAudioPlayer();
     initializeGuidelines();
     initializeIME();
+    initializeAdminSelection();
     initializeSecretShortcuts();
     
     // Auto-hide messages after 5 seconds
@@ -956,12 +957,20 @@ document.head.appendChild(style);
  */
 function initializeSecretShortcuts() {
     document.addEventListener('keydown', function(event) {
-        // Ctrl + ` (backtick) to toggle reference transcription visibility
+        // Ctrl + ` (backtick) to open admin selector modal
         if (event.ctrlKey && event.code === 'Backquote') {
             event.preventDefault();
-            toggleReferenceTranscription();
+            openAdminModal();
         }
     });
+
+    // Clear admin button
+    const clearBtn = document.getElementById('clearAdminBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            clearAdminSelection();
+        });
+    }
 }
 
 /**
@@ -980,4 +989,113 @@ function toggleReferenceTranscription() {
             showNotification('Reference transcription hidden', 'info', 2000);
         }
     }
+}
+
+/**
+ * Admin selection: read from storage, apply to form/UI, control reference visibility
+ */
+function initializeAdminSelection() {
+    try {
+        const saved = localStorage.getItem('adminName');
+        if (saved && ['chirath','rusira','kokila','sahan'].includes(saved)) {
+            applyAdminSelectionToForm(saved);
+            // Ensure reference stays visible for admins
+            isReferenceTranscriptionVisible = true;
+            const ref = document.getElementById('referenceSection');
+            if (ref) ref.style.display = 'block';
+        }
+    } catch (_) {}
+}
+
+function applyAdminSelectionToForm(name) {
+    const adminField = document.getElementById('adminField');
+    const adminIndicator = document.getElementById('adminIndicator');
+    const adminNameEl = document.getElementById('adminName');
+    if (adminField) adminField.value = name || '';
+    if (name) {
+        if (adminIndicator) adminIndicator.style.display = 'block';
+        if (adminNameEl) adminNameEl.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+    } else {
+        if (adminIndicator) adminIndicator.style.display = 'none';
+        if (adminNameEl) adminNameEl.textContent = '';
+    }
+}
+
+function openAdminModal() {
+    const modal = document.getElementById('adminSelectModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('adminSelectModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function selectAdmin(name) {
+    if (!['chirath','rusira','kokila','sahan'].includes(name)) return;
+    
+    // Add selection animation
+    const selectedCard = document.querySelector(`[data-admin="${name}"]`);
+    if (selectedCard) {
+        // Remove previous selections
+        document.querySelectorAll('.profile-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Add selected class for animation
+        selectedCard.classList.add('selected');
+        
+        // Show selection feedback animation
+        const avatar = selectedCard.querySelector('.profile-avatar');
+        if (avatar) {
+            avatar.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                avatar.style.transform = '';
+            }, 300);
+        }
+    }
+    
+    // Delay closing modal for visual feedback
+    setTimeout(() => {
+        try { localStorage.setItem('adminName', name); } catch (_) {}
+        applyAdminSelectionToForm(name);
+        
+        // Show reference immediately if available
+        const ref = document.getElementById('referenceSection');
+        if (ref) ref.style.display = 'block';
+        isReferenceTranscriptionVisible = true;
+        
+        showNotification(`Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}! Admin features activated.`, 'success', 3000);
+        closeAdminModal();
+    }, 400);
+}
+
+function clearAdminSelection() {
+    try { localStorage.removeItem('adminName'); } catch (_) {}
+    applyAdminSelectionToForm('');
+    // Hide reference until admin is selected again
+    const ref = document.getElementById('referenceSection');
+    if (ref) ref.style.display = 'none';
+    isReferenceTranscriptionVisible = false;
+    showNotification('Admin cleared. Reference hidden.', 'info', 2000);
+}
+
+// Close admin modal when clicking outside of it
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('adminSelectModal');
+    if (event.target === modal) {
+        closeAdminModal();
+    }
+});
+
+// Ensure admin stays applied after form reset
+const originalResetForm = typeof resetForm === 'function' ? resetForm : null;
+if (originalResetForm) {
+    window.resetForm = function() {
+        originalResetForm();
+        try {
+            const saved = localStorage.getItem('adminName');
+            if (saved) applyAdminSelectionToForm(saved);
+        } catch (_) {}
+    };
 }

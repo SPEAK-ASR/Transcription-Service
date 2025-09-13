@@ -85,6 +85,14 @@ class Transcriptions(Base):
         nullable=False, 
         default="cannot_recognized"
     )
+
+    # Admin attribution (nullable). Enum type is assumed to exist in DB (Supabase)
+    # with allowed values: chirath, rusira, kokila, sahan
+    admin = Column(
+        Enum("chirath", "rusira", "kokila", "sahan", name="admin_enum", create_type=False),
+        nullable=True,
+        default=None
+    )
     
     # Audit trail
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)

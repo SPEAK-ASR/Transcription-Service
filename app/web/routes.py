@@ -89,6 +89,7 @@ async def submit_transcription(
     is_code_mixed: bool = Form(default=False),
     is_speaker_overlapping: bool = Form(default=False),
     is_audio_suitable: Optional[bool] = Form(default=True),
+    admin: Optional[str] = Form(default=None),
     db: AsyncSession = Depends(get_async_database_session)
 ):
     """
@@ -103,7 +104,8 @@ async def submit_transcription(
             has_noise=has_noise,
             is_code_mixed=is_code_mixed,
             is_speaker_overlappings_exist=is_speaker_overlapping,
-            is_audio_suitable=is_audio_suitable
+            is_audio_suitable=is_audio_suitable,
+            admin=admin if admin else None
         )
         
         # Submit the transcription
