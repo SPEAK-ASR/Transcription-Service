@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeIME();
     initializeAdminSelection();
     initializeSecretShortcuts();
+    initializeLeaderboard();
     
     // Auto-hide messages after 5 seconds
     hideMessagesAfterDelay();
@@ -396,6 +397,182 @@ function testAudioUrl() {
     // Also try to open in new window for manual testing
     showNotification('Opening URL in new window for manual testing...', 'info', 3000);
     window.open(audioUrl, '_blank');
+}
+
+// Override with clean version (no emoji, remove stray chars)
+function fixPodiumRanks() {
+    const el = document.querySelector('.podium-item.rank-1 .podium-rank');
+    if (!el) return;
+    try {
+        el.innerHTML = el.innerHTML
+            .replace(/\u001f/g, '')
+            .replace(/\s*451\s*/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    } catch (_) {}
+}
+
+/**
+ * Leaderboard Modal & Fetch
+ */
+function initializeLeaderboard() {
+    const openBtn = document.getElementById('openLeaderboardBtn');
+    const modal = document.getElementById('leaderboardModal');
+    if (!openBtn || !modal) return;
+
+    // Open and fetch on demand
+    openBtn.addEventListener('click', () => {
+        openLeaderboardModal();
+        // Always fetch on open to keep it fresh
+        fetchLeaderboard('all');
+    });
+
+    // Tab switching
+    document.querySelectorAll('.lb-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const range = btn.getAttribute('data-range');
+            setActiveLbTab(range);
+            fetchLeaderboard(range);
+        });
+    });
+
+    // Close when clicking outside content
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeLeaderboardModal();
+        }
+    });
+}
+
+function openLeaderboardModal() {
+    const modal = document.getElementById('leaderboardModal');
+    if (modal) modal.style.display = 'block';
+}
+
+function closeLeaderboardModal() {
+    const modal = document.getElementById('leaderboardModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function setActiveLbTab(range) {
+    document.querySelectorAll('.lb-tab').forEach(btn => {
+        const isActive = btn.getAttribute('data-range') === range;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+}
+
+async function fetchLeaderboard(range) {
+    const container = document.getElementById('leaderboardContainer');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="lb-loading">
+            <div class="lb-spinner"></div>
+            <div>Loading leaderboard…</div>
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`/api/admin-leaderboard?range=${encodeURIComponent(range)}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load');
+        renderLeaderboard(container, data.leaders, data.range, data.total);
+    } catch (err) {
+        console.error('Leaderboard error:', err);
+        container.innerHTML = `<div class="lb-empty">Unable to load leaderboard. Please try again.</div>`;
+    }
+}
+
+function renderLeaderboard(container, leaders, range, total) {
+    if (!leaders || leaders.length === 0) {
+        container.innerHTML = `<div class="lb-empty">No admin transcriptions yet.</div>`;
+        return;
+    }
+
+    const top = leaders.slice(0, 3);
+    const rest = leaders.slice(3);
+
+    const podiumHtml = `
+        <div class="leaderboard-podium">
+            ${renderPodiumItemV2(top[1] || null, 2)}
+            ${renderPodiumItemV2(top[0] || null, 1, true)}
+            ${renderPodiumItemV2(top[2] || null, 3)}
+        </div>
+    `;
+
+    const listHtml = rest.map((item, idx) => {
+        const rank = idx + 4;
+        const name = adminDisplayName(item.admin);
+        const img = `/static/assets/profiles/${item.admin}.png`;
+        const initial = name ? name.charAt(0) : '?';
+        return `
+            <div class="leaderboard-row">
+                <div class="left">
+                    <div class="rank-badge">${rank}</div>
+                    <div class="row-avatar"><img src="${img}" alt="${name}" onerror="this.parentElement.textContent='${initial}'; this.remove()"></div>
+                    <div class="name">${name}</div>
+                </div>
+                <div class="count">${item.count}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        ${podiumHtml}
+        <div class="leaderboard-list">${listHtml}</div>
+    `;
+    try { fixPodiumRanks(); } catch (_) {}
+}
+
+function renderPodiumItem(item, rank, center = false) {
+    if (!item) {
+        return `<div class="podium-item${center ? ' center' : ''}">
+            <div class="podium-rank">${rank}</div>
+            <div class="podium-avatar"></div>
+            <div class="podium-name">—</div>
+            <div class="podium-count">0</div>
+        </div>`;
+    }
+    const name = adminDisplayName(item.admin);
+    const img = `/static/assets/profiles/${item.admin}.png`;
+    return `<div class="podium-item${center ? ' center' : ''}">
+        <div class="podium-rank">${rank}${rank === 1 ? ' 451' : ''}</div>
+        <div class="podium-avatar"><img src="${img}" alt="${name}" onerror="this.parentElement.textContent='${name[0]}'; this.remove()"></div>
+        <div class="podium-name">${name}</div>
+        <div class="podium-count">${item.count}</div>
+    </div>`;
+}
+
+function adminDisplayName(key) {
+    if (!key) return '';
+    const map = { chirath: 'Chirath', rusira: 'Rusira', kokila: 'Kokila', sahan: 'Sahan' };
+    return map[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+}
+
+// Modern podium renderer without emoji. Adds SVG crown for rank 1
+function renderPodiumItemV2(item, rank, center = false) {
+    if (!item) {
+        return `<div class="podium-item${center ? ' center' : ''} rank-${rank}">
+            <div class="podium-rank">${rank}${rank === 1 ? ' ' + crownSVG() : ''}</div>
+            <div class="podium-avatar"></div>
+            <div class="podium-name">-</div>
+            <div class="podium-count">0</div>
+        </div>`;
+    }
+    const name = adminDisplayName(item.admin);
+    const img = `/static/assets/profiles/${item.admin}.png`;
+    return `<div class="podium-item${center ? ' center' : ''} rank-${rank}">
+        <div class="podium-rank">${rank}${rank === 1 ? ' ' + crownSVG() : ''}</div>
+        <div class="podium-avatar"><img src="${img}" alt="${name}" onerror="this.parentElement.textContent='${name[0]}'; this.remove()"></div>
+        <div class="podium-name">${name}</div>
+        <div class="podium-count">${item.count}</div>
+    </div>`;
+}
+
+function crownSVG() {
+    return `<svg class="crown-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <path d="M5 16l-2-9 5 4 4-6 4 6 5-4-2 9H5zm-1 2h16v2H4v-2z"/>
+    </svg>`;
 }
 
 /**
@@ -1098,4 +1275,18 @@ if (originalResetForm) {
             if (saved) applyAdminSelectionToForm(saved);
         } catch (_) {}
     };
+}
+
+// Ensure crown shows correctly on podium rank 1
+function fixPodiumRanks() {
+    const centerItem = document.querySelector('.podium-item.center .podium-rank');
+    if (centerItem) {
+        const text = centerItem.textContent.trim();
+        const cleaned = text.replace(/\s*451\s*$/, '');
+        if (!/👑/.test(cleaned)) {
+            centerItem.textContent = cleaned + ' 👑';
+        } else {
+            centerItem.textContent = cleaned;
+        }
+    }
 }

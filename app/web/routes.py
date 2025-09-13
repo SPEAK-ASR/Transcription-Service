@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from uuid import UUID
 from typing import Optional
 
@@ -212,3 +213,66 @@ async def get_new_audio(
     Get a new random audio file (skip current one).
     """
     return RedirectResponse(url="/", status_code=302)
+
+
+@router.get("/api/admin-leaderboard")
+async def get_admin_leaderboard(
+    range: str = "all",
+    db: AsyncSession = Depends(get_async_database_session)
+):
+    """
+    Return aggregated transcription counts per admin.
+
+    Query params:
+    - range: one of 'all', 'week', 'month'
+    """
+    try:
+        rng = (range or "all").lower()
+        if rng not in {"all", "week", "month"}:
+            rng = "all"
+
+        # Build time filter using PostgreSQL date_trunc for current week/month
+        time_filter = ""
+        if rng == "week":
+            time_filter = " AND created_at >= date_trunc('week', now())"
+        elif rng == "month":
+            time_filter = " AND created_at >= date_trunc('month', now())"
+
+        query = text(
+            f"""
+            SELECT admin, COUNT(*) AS count
+            FROM "Transcriptions"
+            WHERE admin IS NOT NULL {time_filter}
+            GROUP BY admin
+            ORDER BY count DESC, admin ASC;
+            """
+        )
+
+        result = await db.execute(query)
+        rows = result.fetchall()
+
+        data = [
+            {"admin": r[0], "count": int(r[1]) if r[1] is not None else 0}
+            for r in rows
+            if r[0] is not None
+        ]
+
+        total = sum(item["count"] for item in data)
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "range": rng,
+                "total": total,
+                "leaders": data,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error generating admin leaderboard: {e}")
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": "Failed to load leaderboard."
+            },
+            status_code=500
+        )

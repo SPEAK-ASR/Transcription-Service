@@ -319,6 +319,37 @@
         </div>
     </div>
 
+    <!-- Floating Leaderboard Button -->
+    <button id="openLeaderboardBtn" class="floating-leaderboard-btn" title="Admin Leaderboard" aria-label="Open admin leaderboard">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17 3H7v2H3v4a5 5 0 0 0 5 5h.08A7.001 7.001 0 0 0 12 20a7.001 7.001 0 0 0 3.92-6H16a5 5 0 0 0 5-5V5h-4V3zm-2 2v4a5 5 0 0 1-4 4.9V5h4zM5 7V5h4v8.9A5 5 0 0 1 5 7zm11 12H8v2h8v-2z"/>
+        </svg>
+    </button>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboardModal" class="modal" style="display:none;">
+        <div class="modal-content leaderboard-modal">
+            <div class="modal-header">
+                <h3>Admin Leaderboard</h3>
+                <span class="modal-close" onclick="closeLeaderboardModal()">&times;</span>
+            </div>
+            <div class="leaderboard-tabs" role="tablist">
+                <button type="button" class="lb-tab active" data-range="all" aria-selected="true">All Time</button>
+                <button type="button" class="lb-tab" data-range="week" aria-selected="false">This Week</button>
+                <button type="button" class="lb-tab" data-range="month" aria-selected="false">This Month</button>
+            </div>
+            <div id="leaderboardContainer" class="leaderboard-body">
+                <div class="lb-loading">
+                    <div class="lb-spinner"></div>
+                    <div>Loading leaderboard…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeLeaderboardModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/script.js"></script>
     <script src="/static/sin-phonetic-ime.js"></script>
     <script>
