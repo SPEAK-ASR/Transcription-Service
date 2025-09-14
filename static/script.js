@@ -813,6 +813,15 @@ function initializeGuidelines() {
     const body = document.getElementById('guidelinesBody');
     if (!section || !toggle || !body) return;
 
+    // Check if user is an admin - if so, hide guidelines entirely
+    try {
+        const savedAdmin = localStorage.getItem('adminName');
+        if (savedAdmin && ['chirath','rusira','kokila','sahan'].includes(savedAdmin)) {
+            section.style.display = 'none';
+            return; // Exit early for admins
+        }
+    } catch (_) {}
+
     const STORAGE_KEY = 'guidelinesCollapsed';
     const setCollapsed = (collapsed) => {
         if (collapsed) {
@@ -1180,6 +1189,10 @@ function initializeAdminSelection() {
             isReferenceTranscriptionVisible = true;
             const ref = document.getElementById('referenceSection');
             if (ref) ref.style.display = 'block';
+            
+            // Hide guidelines for admins
+            const guidelines = document.getElementById('guidelines');
+            if (guidelines) guidelines.style.display = 'none';
         }
     } catch (_) {}
 }
@@ -1242,6 +1255,10 @@ function selectAdmin(name) {
         if (ref) ref.style.display = 'block';
         isReferenceTranscriptionVisible = true;
         
+        // Hide guidelines for admins
+        const guidelines = document.getElementById('guidelines');
+        if (guidelines) guidelines.style.display = 'none';
+        
         showNotification(`Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}! Admin features activated.`, 'success', 3000);
         closeAdminModal();
     }, 400);
@@ -1254,7 +1271,12 @@ function clearAdminSelection() {
     const ref = document.getElementById('referenceSection');
     if (ref) ref.style.display = 'none';
     isReferenceTranscriptionVisible = false;
-    showNotification('Admin cleared. Reference hidden.', 'info', 2000);
+    
+    // Show guidelines again for regular users
+    const guidelines = document.getElementById('guidelines');
+    if (guidelines) guidelines.style.display = 'block';
+    
+    showNotification('Admin cleared. Guidelines restored.', 'info', 2000);
 }
 
 // Close admin modal when clicking outside of it
