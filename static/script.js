@@ -234,6 +234,9 @@ function initializeForm() {
     transcriptionTextarea.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
+        
+        // Secret admin access: check for special string
+        checkForAdminTrigger(this);
     });
     
     // Form validation and AJAX submission
@@ -1137,6 +1140,30 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+/**
+ * Check for secret admin trigger string in transcription textarea
+ */
+function checkForAdminTrigger(textarea) {
+    const value = textarea.value;
+    const triggerString = 'admin-sel#';
+    
+    // Check if the trigger string is present
+    if (value.includes(triggerString)) {
+        // Clear the trigger string from textarea
+        textarea.value = value.replace(triggerString, '').trim();
+        
+        // Trigger auto-resize after clearing
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        // Open admin modal
+        openAdminModal();
+        
+        // Optional: Show subtle feedback (only visible in console for security)
+        console.log('Admin access triggered via text input');
+    }
+}
 
 /**
  * Initialize secret keyboard shortcuts for development team
