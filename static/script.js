@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSecretShortcuts();
     initializeLeaderboard();
     
+    // Ensure leaderboard button visibility is correct on page load
+    updateLeaderboardButtonVisibility();
+    
     // Auto-hide messages after 5 seconds
     hideMessagesAfterDelay();
 });
@@ -1221,6 +1224,9 @@ function initializeAdminSelection() {
             const guidelines = document.getElementById('guidelines');
             if (guidelines) guidelines.style.display = 'none';
         }
+        
+        // Update leaderboard button visibility based on admin status
+        updateLeaderboardButtonVisibility();
     } catch (_) {}
 }
 
@@ -1286,6 +1292,9 @@ function selectAdmin(name) {
         const guidelines = document.getElementById('guidelines');
         if (guidelines) guidelines.style.display = 'none';
         
+        // Show leaderboard button for admins
+        updateLeaderboardButtonVisibility();
+        
         showNotification(`Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}! Admin features activated.`, 'success', 3000);
         closeAdminModal();
     }, 400);
@@ -1303,7 +1312,32 @@ function clearAdminSelection() {
     const guidelines = document.getElementById('guidelines');
     if (guidelines) guidelines.style.display = 'block';
     
+    // Hide leaderboard button for non-admins
+    updateLeaderboardButtonVisibility();
+    
     showNotification('Admin cleared. Guidelines restored.', 'info', 2000);
+}
+
+/**
+ * Check if current user is an authenticated admin
+ */
+function isAdmin() {
+    try {
+        const saved = localStorage.getItem('adminName');
+        return saved && ['chirath','rusira','kokila','sahan'].includes(saved);
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * Update leaderboard button visibility based on admin status
+ */
+function updateLeaderboardButtonVisibility() {
+    const leaderboardBtn = document.getElementById('openLeaderboardBtn');
+    if (leaderboardBtn) {
+        leaderboardBtn.style.display = isAdmin() ? 'flex' : 'none';
+    }
 }
 
 // Close admin modal when clicking outside of it
