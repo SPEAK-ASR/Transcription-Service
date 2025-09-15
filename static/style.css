@@ -160,6 +160,7 @@ header p {
     font-weight: 600;
     display: flex;
     align-items: center;
+    margin: auto;
     gap: 8px;
 }
 
@@ -194,8 +195,9 @@ header p {
 }
 
 .audio-info {
-    text-align: center;
-    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    margin: 0;
 }
 
 .audio-title {
@@ -266,6 +268,15 @@ header p {
     color: #888;
 }
 
+/* Audio Header */
+.audio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 0 4px;
+}
+
 /* Audio Controls */
 .audio-controls {
     display: flex;
@@ -273,6 +284,7 @@ header p {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    margin-top: 16px;
 }
 
 .control-btn {
@@ -317,6 +329,26 @@ header p {
     height: 48px;
 }
 
+.seek-btn {
+    width: 40px;
+    height: 40px;
+}
+
+.auto-replay-btn {
+    width: 44px;
+    height: 44px;
+}
+
+.auto-replay-btn.active {
+    background: linear-gradient(135deg, #4a9eff, #00d4ff);
+    border-color: #4a9eff;
+}
+
+.auto-replay-btn.active:hover {
+    background: linear-gradient(135deg, #3a8eef, #00c4ef);
+    transform: scale(1.05);
+}
+
 .skip-text {
     position: absolute;
     bottom: -2px;
@@ -329,41 +361,39 @@ header p {
 /* Speed Controls */
 .speed-controls {
     display: flex;
-    gap: 4px;
-    margin: 0 12px;
-    padding: 4px;
-    background: #222;
-    border-radius: 20px;
-    border: 1px solid #333;
+    gap: 2px;
+    padding: 3px;
+    background: #1a1a1a;
+    border-radius: 16px;
+    border: 1px solid #2a2a2a;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .speed-btn {
     background: transparent;
     border: none;
-    padding: 6px 12px;
-    border-radius: 16px;
-    font-size: 0.8rem;
-    color: #888;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #999;
     cursor: pointer;
     transition: all 0.2s ease;
     font-weight: 500;
+    min-width: 32px;
 }
 
 .speed-btn:hover {
     color: #e0e0e0;
-    background: #333;
+    background: #2a2a2a;
 }
 
 .speed-btn.active {
     background: #4a9eff;
     color: #fff;
+    box-shadow: 0 1px 3px rgba(74, 158, 255, 0.3);
 }
 
-/* Volume Button */
-.volume-btn {
-    width: 40px;
-    height: 40px;
-}
+
 
 /* Loading and Error States */
 .audio-loading {
@@ -388,8 +418,16 @@ header p {
 
 /* Responsive Design for Audio Player */
 @media (max-width: 480px) {
+    .audio-header {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    
     .audio-controls {
         gap: 6px;
+        margin-top: 12px;
     }
     
     .control-btn {
@@ -405,6 +443,16 @@ header p {
     .backward-btn, .forward-btn {
         width: 44px;
         height: 44px;
+    }
+    
+    .seek-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .auto-replay-btn {
+        width: 40px;
+        height: 40px;
     }
     
     .speed-controls {

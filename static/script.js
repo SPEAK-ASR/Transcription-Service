@@ -81,15 +81,29 @@ function initializeCustomAudioPlayer() {
     });
     
     audioPlayer.addEventListener('ended', function() {
-        document.querySelector('.play-icon').style.display = 'block';
-        document.querySelector('.pause-icon').style.display = 'none';
-        progressBar.style.width = '0%';
-        progressHandle.style.left = '0%';
+        // Check if auto replay is enabled
+        const autoReplayBtn = document.getElementById('autoReplayBtn');
+        const isAutoReplayEnabled = autoReplayBtn && autoReplayBtn.classList.contains('active');
         
-        // Auto-focus on transcription when audio ends
-        const transcriptionTextarea = document.getElementById('transcription');
-        if (transcriptionTextarea) {
-            transcriptionTextarea.focus();
+        if (isAutoReplayEnabled) {
+            // Auto replay - restart the audio
+            audioPlayer.currentTime = 0;
+            audioPlayer.play().catch(e => {
+                console.error('Error auto-replaying audio:', e);
+                showNotification('Error auto-replaying audio', 'error');
+            });
+        } else {
+            // Normal end behavior
+            document.querySelector('.play-icon').style.display = 'block';
+            document.querySelector('.pause-icon').style.display = 'none';
+            progressBar.style.width = '0%';
+            progressHandle.style.left = '0%';
+            
+            // Auto-focus on transcription when audio ends
+            const transcriptionTextarea = document.getElementById('transcription');
+            if (transcriptionTextarea) {
+                transcriptionTextarea.focus();
+            }
         }
     });
     
@@ -154,13 +168,8 @@ function initializeAudio() {
     console.log('Audio player initialized');
     console.log('Audio sources:', Array.from(audioPlayer.querySelectorAll('source')).map(s => s.src));
     
-    // Auto-focus on transcription when audio ends
-    audioPlayer.addEventListener('ended', function() {
-        const transcriptionTextarea = document.getElementById('transcription');
-        if (transcriptionTextarea) {
-            transcriptionTextarea.focus();
-        }
-    });
+    // Handle audio ended event (this will be handled by the custom player)
+    // The main ended handler is in initializeCustomAudioPlayer function
     
     // Handle audio loading errors
     audioPlayer.addEventListener('error', function(e) {
@@ -340,6 +349,23 @@ function initializeForm() {
             }
         }
         
+        // Comma and period keys for 1-second seeking when not typing
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            if (e.key === ',') {
+                e.preventDefault();
+                seekBackward1s();
+            } else if (e.key === '.') {
+                e.preventDefault();
+                seekForward1s();
+            }
+        }
+        
+        // 'A' key for auto replay toggle when not typing
+        if (e.key === 'a' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            toggleAutoReplay();
+        }
+        
         // Number keys for speed control when not typing
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             if (e.key === '1') {
@@ -361,12 +387,6 @@ function initializeForm() {
         if (e.key === 'r' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
             replayAudio();
-        }
-        
-        // M for mute when not typing
-        if (e.key === 'm' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            toggleMute();
         }
     });
 }
@@ -676,26 +696,41 @@ function adjustSpeed(speed) {
     }
 }
 
+
+
 /**
- * Toggle mute/unmute
+ * Seek backward 1 second
  */
-function toggleMute() {
+function seekBackward1s() {
     const audioPlayer = document.getElementById('audioPlayer');
-    const volumeIcon = document.querySelector('.volume-icon');
-    const muteIcon = document.querySelector('.mute-icon');
-    
     if (audioPlayer) {
-        audioPlayer.muted = !audioPlayer.muted;
-        
-        if (audioPlayer.muted) {
-            volumeIcon.style.display = 'none';
-            muteIcon.style.display = 'block';
-            showNotification('Audio muted', 'info', 1500);
-        } else {
-            volumeIcon.style.display = 'block';
-            muteIcon.style.display = 'none';
-            showNotification('Audio unmuted', 'info', 1500);
-        }
+        audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - 1);
+    }
+}
+
+/**
+ * Seek forward 1 second
+ */
+function seekForward1s() {
+    const audioPlayer = document.getElementById('audioPlayer');
+    if (audioPlayer) {
+        audioPlayer.currentTime = Math.min(audioPlayer.duration, audioPlayer.currentTime + 1);
+    }
+}
+
+/**
+ * Toggle auto replay functionality
+ */
+function toggleAutoReplay() {
+    const autoReplayBtn = document.getElementById('autoReplayBtn');
+    const isActive = autoReplayBtn.classList.contains('active');
+    
+    if (isActive) {
+        autoReplayBtn.classList.remove('active');
+        showNotification('Auto replay disabled', 'info', 1500);
+    } else {
+        autoReplayBtn.classList.add('active');
+        showNotification('Auto replay enabled', 'success', 1500);
     }
 }
 
