@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     MAX_AUDIO_DURATION_SECONDS: int = 300  # 5 minutes maximum
     
     # Transcription collection settings
-    MAX_TRANSCRIPTIONS_PER_AUDIO: int = 2  # Number of transcriptions per audio file
+    MAX_TRANSCRIPTIONS_PER_AUDIO: int = 1  # Number of transcriptions per audio file
     AUDIO_LEASE_TIMEOUT_MINUTES: int = 15  # Audio file lease timeout in minutes
 
     class Config:
