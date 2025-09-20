@@ -55,8 +55,23 @@
                     return;
                 }
 
-                showNotification('Transcription validated successfully.', 'success');
-                await fetchNextValidationItem(form);
+                // Show success popup similar to transcription submission
+                if (typeof showSuccessPopup === 'function') {
+                    showSuccessPopup('Transcription validated successfully! Loading next item...');
+                } else {
+                    showNotification('Transcription validated successfully.', 'success');
+                }
+                
+                // Scroll to top of the page
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                
+                // Wait a bit before loading next item to allow popup to be seen
+                setTimeout(async () => {
+                    await fetchNextValidationItem(form);
+                }, 2000);
             } catch (error) {
                 console.error('Error validating transcription:', error);
                 showNotification('Could not validate transcription. Please try again.', 'error');
@@ -68,6 +83,11 @@
         if (nextBtn) {
             nextBtn.addEventListener('click', async () => {
                 await fetchNextValidationItem(form);
+                // Scroll to top when manually fetching next item
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
             });
         }
     });
@@ -102,6 +122,12 @@
             const payload = await response.json();
             applyValidationItem(payload);
             showNotification('Loaded next transcription for validation.', 'success');
+            
+            // Scroll to top when new item is loaded
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         } catch (error) {
             console.error('Error fetching next validation item:', error);
             showNotification('Could not load the next transcription. Try again later.', 'error');
