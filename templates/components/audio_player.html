@@ -1,0 +1,83 @@
+{% macro render_audio_player(audio) -%}
+<div class="audio-player">
+    <audio preload="auto" id="audioPlayer" crossorigin="anonymous" style="display: none;">
+        <source src="{{ audio.gcs_signed_url }}" type="audio/mpeg">
+        <source src="{{ audio.gcs_signed_url }}" type="audio/mp4">
+        <source src="{{ audio.gcs_signed_url }}" type="audio/wav">
+        <source src="{{ audio.gcs_signed_url }}" type="audio/ogg">
+        <source src="{{ audio.gcs_signed_url }}" type="audio/webm">
+        <source src="{{ audio.gcs_signed_url }}">
+        Your browser does not support the audio element.
+        <a href="{{ audio.gcs_signed_url }}" target="_blank">Download audio file</a>
+    </audio>
+
+    <!-- Custom Audio Player UI -->
+    <div class="custom-audio-player">
+        <div class="audio-header">
+            <div class="audio-info">
+                <div class="audio-meta">
+                    <span class="duration" id="audioDuration">--:--</span>
+                    <span class="separator">{{ '\a' }}</span>
+                    <span class="speed" id="audioSpeed">1x</span>
+                </div>
+            </div>
+
+            <div class="speed-controls">
+                <button type="button" class="speed-btn" onclick="adjustSpeed(0.5)" data-speed="0.5">0.5x</button>
+                <button type="button" class="speed-btn" onclick="adjustSpeed(0.75)" data-speed="0.75">0.75x</button>
+                <button type="button" class="speed-btn active" onclick="adjustSpeed(1.0)" data-speed="1.0">1x</button>
+                <button type="button" class="speed-btn" onclick="adjustSpeed(1.25)" data-speed="1.25">1.25x</button>
+                <button type="button" class="speed-btn" onclick="adjustSpeed(1.5)" data-speed="1.5">1.5x</button>
+            </div>
+        </div>
+
+        <div class="audio-progress-container">
+            <div class="audio-progress">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-handle" id="progressHandle"></div>
+            </div>
+            <div class="time-display">
+                <span class="current-time" id="currentTime">0:00</span>
+                <span class="total-time" id="totalTime">0:00</span>
+            </div>
+        </div>
+
+        <div class="audio-controls">
+            <button type="button" class="control-btn replay-btn" onclick="replayAudio()" title="Replay from beginning">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,5V1L7,6L12,11V7A6,6 0 0,1 18,13A6,6 0 0,1 12,19A6,6 0 0,1 6,13H4A8,8 0 0,0 12,21A8,8 0 0,0 20,13A8,8 0 0,0 12,5Z" />
+                </svg>
+            </button>
+
+            <button type="button" class="control-btn seek-btn" onclick="seekBackward1s()" title="Go back 1 second">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.5,12L20,18V6M11,18V6L2.5,12L11,18Z" />
+                </svg>
+                <span class="skip-text">1s</span>
+            </button>
+
+            <button type="button" class="control-btn play-pause-btn" id="playPauseBtn" onclick="toggleAudio()" title="Play/Pause">
+                <svg class="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                </svg>
+                <svg class="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                    <path d="M14,19H18V5H14M6,19H10V5H6V19Z" />
+                </svg>
+            </button>
+
+            <button type="button" class="control-btn seek-btn" onclick="seekForward1s()" title="Go forward 1 second">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13,6V18L21.5,12M4,18L12.5,12L4,6V18Z" />
+                </svg>
+                <span class="skip-text">1s</span>
+            </button>
+
+            <button type="button" class="control-btn auto-replay-btn" id="autoReplayBtn" onclick="toggleAutoReplay()" title="Toggle auto replay">
+                <svg class="auto-replay-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17,17H7V14L3,18L7,22V19H19A2,2 0 0,0 21,17V13H19V17M7,7H17V10L21,6L17,2V5H5A2,2 0 0,0 3,7V11H5V7Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+{%- endmacro %}

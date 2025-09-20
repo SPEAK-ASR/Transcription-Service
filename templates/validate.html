@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcription Validation</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/assets/logo.png" type="image/png">
+</head>
+<body>
+{% from "components/audio_player.html" import render_audio_player %}
+{% from "components/transcription_form_parts.html" import render_transcription_input, render_audio_suitability, render_metadata_fields %}
+{% from "components/admin_ui.html" import render_admin_indicator, render_admin_selection_modal, render_admin_leaderboard_ui %}
+    <div class="container">
+        <header>
+            <h1>Transcription Validation</h1>
+            <p>Review, correct, and approve submitted transcripts</p>
+            {{ render_admin_indicator() }}
+        </header>
+
+        {% if error_message %}
+        <div class="message error">
+            <span class="icon">!</span>
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        {% set has_item = initial_item is not none %}
+        {% if has_item %}
+            {% set audio_context = initial_item.audio %}
+            {% set transcription_context = initial_item.transcription %}
+        {% else %}
+            {% set audio_context = {
+                "audio_id": "",
+                "audio_filename": "",
+                "google_transcription": None,
+                "transcription_count": 0,
+                "gcs_signed_url": ""
+            } %}
+            {% set transcription_context = {
+                "trans_id": "",
+                "audio_id": "",
+                "transcription": "",
+                "speaker_gender": "",
+                "has_noise": False,
+                "is_code_mixed": False,
+                "is_speaker_overlappings_exist": False,
+                "is_audio_suitable": True,
+                "admin": "",
+                "is_validated": False,
+                "created_at": None
+            } %}
+        {% endif %}
+
+        <section class="audio-section" id="validationWorkArea" {% if not has_item %}style="display:none;"{% endif %}>
+            {% if audio_context.google_transcription %}
+            <div class="reference-section" id="referenceSection" style="display: none;">
+                <div class="reference-header">
+                    <h3>Reference Transcription</h3>
+                    <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                        </svg>
+                        Quick Copy
+                    </button>
+                </div>
+                <div class="reference-text">{{ audio_context.google_transcription }}</div>
+                <small class="reference-note">Reference transcript - visible to validators only.</small>
+            </div>
+            {% endif %}
+
+            {{ render_audio_player(audio_context) }}
+
+            <div class="validation-summary">
+                <div class="summary-row"><strong>Audio file:</strong> <span id="summaryAudioFilename">{{ audio_context.audio_filename or '---' }}</span></div>
+                <div class="summary-row"><strong>Created at:</strong> <span id="summaryCreatedAt">{{ transcription_context.created_at or '---' }}</span></div>
+                <div class="summary-row"><strong>Current status:</strong> <span id="summaryStatus">{{ 'Validated' if transcription_context.is_validated else 'Pending' }}</span></div>
+            </div>
+
+            <form class="transcription-form" id="transcriptionForm" data-form-mode="validation">
+                <input type="hidden" name="trans_id" value="{{ transcription_context.trans_id }}">
+                <input type="hidden" name="audio_id" value="{{ transcription_context.audio_id }}">
+                <input type="hidden" name="is_audio_suitable" id="audioSuitableField" value="{{ 'true' if transcription_defaults.get('is_audio_suitable', True) else 'false' }}">
+                <input type="hidden" name="admin" id="adminField" value="{{ transcription_defaults.get('admin', '') or '' }}">
+
+                {{ render_transcription_input(
+                    initial_text=transcription_defaults.get('transcription', ''),
+                    label='Validated Transcription *'
+                ) }}
+
+                {{ render_audio_suitability(
+                    is_audio_suitable=transcription_defaults.get('is_audio_suitable', True),
+                    mode='validation'
+                ) }}
+
+                {{ render_metadata_fields(speaker_genders, transcription_defaults) }}
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="validateSubmitBtn">Mark as Validated</button>
+                    <button type="button" class="btn btn-secondary" id="fetchNextBtn">Next Pending</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="no-audio" id="noValidationPlaceholder" {% if has_item %}style="display:none;"{% endif %}>
+            <div class="no-audio-icon">
+</div>
+            <h2>No submissions waiting</h2>
+            <p>All available transcriptions have been reviewed. Great job!</p>
+            <a href="/" class="btn btn-primary">Back to Collection</a>
+        </section>
+
+        <footer>
+            <p>Audio Transcription Service &mdash; Validation Console</p>
+        </footer>
+    </div>
+
+    {{ render_admin_selection_modal() }}
+
+    {{ render_admin_leaderboard_ui() }}
+
+    <script>
+        window.initialValidationItem = null;
+    </script>
+    <script src="/static/script.js"></script>
+    <script src="/static/sin-phonetic-ime.js"></script>
+    <script src="/static/validate.js"></script>
+</body>
+</html>

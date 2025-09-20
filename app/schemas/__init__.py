@@ -73,9 +73,41 @@ class TranscriptionResponse(BaseModel):
     admin: Optional[AdminName]
     is_validated: bool
     created_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
+
+class TranscriptionValidationUpdate(BaseModel):
+    """
+    Request model for validating an existing transcription.
+    """
+    transcription: str = Field(..., min_length=1, description="Updated transcription text")
+    speaker_gender: SpeakerGender = Field(..., description="Updated speaker gender")
+    has_noise: bool = Field(default=False, description="Whether the audio contains noise")
+    is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
+    is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
+    is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio remains suitable for transcription")
+    admin: Optional[AdminName] = Field(default=None, description="Admin attribution if validated by an admin")
+
+    @field_validator("transcription")
+    @classmethod
+    def validate_transcription_text(cls, v: str, info) -> str:
+        is_audio_suitable = info.data.get('is_audio_suitable', True)
+        if is_audio_suitable is False:
+            return v if v else "Audio not suitable for transcription"
+        if not v or not v.strip():
+            raise ValueError("Transcription text cannot be empty")
+        return v.strip()
+
+
+class ValidationQueueItem(BaseModel):
+    """
+    Combined response payload for validation queue items.
+    """
+    audio: AudioResponse
+    transcription: TranscriptionResponse
+
+    model_config = ConfigDict(from_attributes=True)
 
 class CSVUploadResult(BaseModel):
     """
@@ -154,3 +186,5 @@ class AudioComparisonResponse(BaseModel):
         ..., description="Audio files that exist only in database"
     )
     matched_files_count: int = Field(..., description="Number of files that exist in both cloud and DB")
+
+

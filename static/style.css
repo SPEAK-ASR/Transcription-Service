@@ -1575,3 +1575,16 @@ footer {
         font-size: 1rem;
     }
 }
+.validation-summary {
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: #182b3a;
+    border: 1px solid #223b4f;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.validation-summary .summary-row + .summary-row {
+    margin-top: 6px;
+}

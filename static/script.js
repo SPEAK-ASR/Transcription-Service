@@ -241,6 +241,7 @@ function initializeForm() {
     const transcriptionTextarea = document.getElementById('transcription');
     
     if (!transcriptionForm || !transcriptionTextarea) return;
+    const formMode = transcriptionForm.dataset?.formMode || 'transcription';
     
     // Auto-resize textarea
     transcriptionTextarea.addEventListener('input', function() {
@@ -252,78 +253,68 @@ function initializeForm() {
     });
     
     // Form validation and AJAX submission
-    transcriptionForm.addEventListener('submit', async function(e) {
-        e.preventDefault(); // Always prevent default form submission
-        
-        const transcription = transcriptionTextarea.value.trim();
-        const speakerGender = document.getElementById('speaker_gender').value;
-        
-        if (!transcription) {
-            showNotification('Please provide a transcription before submitting.', 'error');
-            transcriptionTextarea.focus();
-            return;
-        }
-        
-        if (!speakerGender) {
-            showNotification('Please select the speaker gender.', 'error');
-            document.getElementById('speaker_gender').focus();
-            return;
-        }
-        
-        if (transcription.length < 3) {
-            showNotification('Transcription seems too short. Please provide a more detailed transcription.', 'error');
-            transcriptionTextarea.focus();
-            return;
-        }
-        
-        // Show loading state
-        const submitButton = transcriptionForm.querySelector('button[type="submit"]');
-        const originalText = submitButton.textContent;
-        if (submitButton) {
-            submitButton.textContent = '⏳ Submitting...';
-            submitButton.disabled = true;
-        }
-        
-        try {
-            // Prepare form data
-            const formData = new FormData(transcriptionForm);
-            
-            // Submit transcription via AJAX
-            const response = await fetch('/submit-transcription', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Show success popup
-                showSuccessPopup(result.message);
-                
-                // Clear form and reset
-                resetForm();
-                
-                // Load new audio after the popup
-                setTimeout(async () => {
-                    await loadNewAudio();
-                }, 2000);
-                
-            } else {
-                showNotification(result.message, 'error');
+    if (formMode === 'transcription') {
+        transcriptionForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Always prevent default form submission
+
+            const transcription = transcriptionTextarea.value.trim();
+            const speakerGender = document.getElementById('speaker_gender').value;
+
+            if (!transcription) {
+                showNotification('Please provide a transcription before submitting.', 'error');
+                transcriptionTextarea.focus();
+                return;
             }
-            
-        } catch (error) {
-            console.error('Error submitting transcription:', error);
-            showNotification('Network error. Please check your connection and try again.', 'error');
-        } finally {
-            // Restore button state
+
+            if (!speakerGender) {
+                showNotification('Please select the speaker gender.', 'error');
+                document.getElementById('speaker_gender').focus();
+                return;
+            }
+
+            if (transcription.length < 3) {
+                showNotification('Transcription seems too short. Please provide a more detailed transcription.', 'error');
+                transcriptionTextarea.focus();
+                return;
+            }
+
+            const submitButton = transcriptionForm.querySelector('button[type="submit"]');
+            const originalText = submitButton ? submitButton.textContent : '';
             if (submitButton) {
-                submitButton.textContent = originalText;
-                submitButton.disabled = false;
+                submitButton.textContent = '⏳ Submitting...';
+                submitButton.disabled = true;
             }
-        }
-    });
-    
+
+            try {
+                const formData = new FormData(transcriptionForm);
+
+                const response = await fetch('/submit-transcription', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccessPopup(result.message);
+                    resetForm();
+                    setTimeout(async () => {
+                        await loadNewAudio();
+                    }, 2000);
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error submitting transcription:', error);
+                showNotification('Network error. Please check your connection and try again.', 'error');
+            } finally {
+                if (submitButton) {
+                    submitButton.textContent = originalText || 'Submit Transcription';
+                    submitButton.disabled = false;
+                }
+            }
+        });
+    }
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Ctrl/Cmd + Enter to submit form
@@ -1408,3 +1399,5 @@ function fixPodiumRanks() {
         }
     }
 }
+
+

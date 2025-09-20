@@ -8,16 +8,14 @@
     <link rel="icon" href="/static/assets/logo.png" type="image/png">
 </head>
 <body>
+{% from "components/audio_player.html" import render_audio_player %}
+{% from "components/transcription_form_parts.html" import render_transcription_input, render_audio_suitability, render_metadata_fields %}
+{% from "components/admin_ui.html" import render_admin_indicator, render_admin_selection_modal, render_admin_leaderboard_ui %}
     <div class="container">
         <header>
             <h1>Audio Transcription</h1>
             <p>Listen and transcribe with metadata</p>
-            <div id="adminIndicator" style="display:none; margin-top:8px;">
-                <span style="background:#243b55;border:1px solid #355a7b;color:#cfe6ff;padding:4px 8px;border-radius:12px;font-size:0.85rem;">
-                    Admin: <strong id="adminName"></strong>
-                </span>
-                <button type="button" id="clearAdminBtn" class="btn btn-secondary" style="margin-left:8px;padding:4px 8px;font-size:0.8rem;">Clear</button>
-            </div>
+            {{ render_admin_indicator() }}
         </header>
 
         <!-- Top-of-page Transcription Guidelines -->
@@ -77,178 +75,19 @@
             {% endif %}
 
             <!-- Audio Player -->
-            <div class="audio-player">
-                <audio preload="auto" id="audioPlayer" crossorigin="anonymous" style="display: none;">
-                    <source src="{{ audio.gcs_signed_url }}" type="audio/mpeg">
-                    <source src="{{ audio.gcs_signed_url }}" type="audio/mp4">
-                    <source src="{{ audio.gcs_signed_url }}" type="audio/wav">
-                    <source src="{{ audio.gcs_signed_url }}" type="audio/ogg">
-                    <source src="{{ audio.gcs_signed_url }}" type="audio/webm">
-                    <source src="{{ audio.gcs_signed_url }}">
-                    Your browser does not support the audio element. 
-                    <a href="{{ audio.gcs_signed_url }}" target="_blank">Download audio file</a>
-                </audio>
-                
-                <!-- Custom Audio Player UI -->
-                <div class="custom-audio-player">
-                    <div class="audio-header">
-                        <div class="audio-info">
-                            <div class="audio-meta">
-                                <span class="duration" id="audioDuration">--:--</span>
-                                <span class="separator">•</span>
-                                <span class="speed" id="audioSpeed">1x</span>
-                            </div>
-                        </div>
-                        
-                        <div class="speed-controls">
-                            <button type="button" class="speed-btn" onclick="adjustSpeed(0.5)" data-speed="0.5">0.5x</button>
-                            <button type="button" class="speed-btn" onclick="adjustSpeed(0.75)" data-speed="0.75">0.75x</button>
-                            <button type="button" class="speed-btn active" onclick="adjustSpeed(1.0)" data-speed="1.0">1x</button>
-                            <button type="button" class="speed-btn" onclick="adjustSpeed(1.25)" data-speed="1.25">1.25x</button>
-                            <button type="button" class="speed-btn" onclick="adjustSpeed(1.5)" data-speed="1.5">1.5x</button>
-                        </div>
-                    </div>
-                    
-                    <div class="audio-progress-container">
-                        <div class="audio-progress">
-                            <div class="progress-bar" id="progressBar"></div>
-                            <div class="progress-handle" id="progressHandle"></div>
-                        </div>
-                        <div class="time-display">
-                            <span class="current-time" id="currentTime">0:00</span>
-                            <span class="total-time" id="totalTime">0:00</span>
-                        </div>
-                    </div>
-                    
-                    <div class="audio-controls">
-                        <button type="button" class="control-btn replay-btn" onclick="replayAudio()" title="Replay from beginning">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12,5V1L7,6L12,11V7A6,6 0 0,1 18,13A6,6 0 0,1 12,19A6,6 0 0,1 6,13H4A8,8 0 0,0 12,21A8,8 0 0,0 20,13A8,8 0 0,0 12,5Z" />
-                            </svg>
-                        </button>
-                        
-                        <button type="button" class="control-btn seek-btn" onclick="seekBackward1s()" title="Go back 1 second">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M11.5,12L20,18V6M11,18V6L2.5,12L11,18Z" />
-                            </svg>
-                            <span class="skip-text">1s</span>
-                        </button>
-                        
-                        <button type="button" class="control-btn play-pause-btn" id="playPauseBtn" onclick="toggleAudio()" title="Play/Pause">
-                            <svg class="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
-                            </svg>
-                            <svg class="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
-                                <path d="M14,19H18V5H14M6,19H10V5H6V19Z" />
-                            </svg>
-                        </button>
-                        
-                        <button type="button" class="control-btn seek-btn" onclick="seekForward1s()" title="Go forward 1 second">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M13,6V18L21.5,12M4,18L12.5,12L4,6V18Z" />
-                            </svg>
-                            <span class="skip-text">1s</span>
-                        </button>
-                        
-                        <button type="button" class="control-btn auto-replay-btn" id="autoReplayBtn" onclick="toggleAutoReplay()" title="Toggle auto replay">
-                            <svg class="auto-replay-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M17,17H7V14L3,18L7,22V19H19A2,2 0 0,0 21,17V13H19V17M7,7H17V10L21,6L17,2V5H5A2,2 0 0,0 3,7V11H5V7Z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>               
-            </div>
-                
+            {{ render_audio_player(audio) }}
 
             <!-- Transcription Form -->
-            <form method="post" action="/submit-transcription" class="transcription-form" id="transcriptionForm">
+            <form method="post" action="/submit-transcription" class="transcription-form" id="transcriptionForm" data-form-mode="transcription">
                 <input type="hidden" name="audio_id" value="{{ audio.audio_id }}">
                 <input type="hidden" name="is_audio_suitable" id="audioSuitableField" value="true">
                 <input type="hidden" name="admin" id="adminField" value="">
 
-                <!-- Transcription Input Section -->
-                <div class="transcription-input-section">
-                    <div class="form-group">
-                        <label for="transcription">Your Transcription *</label>
+                {{ render_transcription_input() }}
 
-                        <!-- Built-in Sinhala IME toggle (default OFF) -->
-                        <div class="ime-toggle-container" style="margin-bottom: 8px;">
-                            <span class="ime-toggle-label">Don't have a Sinhala keyboard? Try the built-in Sinhala phonetic keyboard. <a href="https://facts.helakuru.lk/sinhala-typing/phonetic" target="_blank" rel="noopener noreferrer" style="color: #3498db; text-decoration: underline;">keyboard guide <svg style="width:12px;height:12px;vertical-align:middle;" viewBox="0 0 24 24" fill="#3498db"><path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg></a></span>
-                            <label class="toggle-switch" aria-label="Enable Sinhala phonetic keyboard">
-                                <input type="checkbox" id="imeToggle" class="toggle-input" />
-                                <span class="toggle-slider">
-                                    <span class="toggle-text off">Off</span>
-                                    <span class="toggle-text on">On</span>
-                                </span>
-                            </label>
-                        </div>
+                {{ render_audio_suitability() }}
 
-                        <!-- Textarea wrapped to host the inline chip "සි | en" -->
-                        <div class="ime-container">
-                            <textarea 
-                                name="transcription" 
-                                id="transcription" 
-                                required 
-                                placeholder="Please type exactly what you hear in the audio..."
-                                rows="4"
-                            ></textarea>
-                            <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">සි | en</button>
-                        </div>
-
-                        <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
-                    </div>
-                </div>
-
-                <!-- Audio Suitability Check -->
-                <div class="suitability-section">
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="audioNotSuitable" onchange="handleAudioSuitabilityChange(this)">
-                            <span class="checkmark"></span>
-                            This audio is not suitable for transcription
-                        </label>
-                        <small class="field-note">Check this if the audio has issues that make it impossible to transcribe accurately (e.g., completely inaudible, corrupted, wrong language, etc.)</small>
-                    </div>
-                </div>
-
-                <div class="metadata-section">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="speaker_gender">Speaker Gender *</label>
-                        <select name="speaker_gender" id="speaker_gender" required>
-                            <option value="">Select gender...</option>
-                            {% for gender in speaker_genders %}
-                            <option value="{{ gender }}">{{ gender.title() }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="has_noise" value="true">
-                        <span class="checkmark"></span>
-                        Audio contains background noise
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="is_code_mixed" value="true">
-                        <span class="checkmark"></span>
-                        Audio contains code-mixed content (multiple languages)
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="is_speaker_overlapping" value="true">
-                        <span class="checkmark"></span>
-                        Multiple speakers are talking at the same time
-                    </label>
-                </div>
-                </div>
+                {{ render_metadata_fields(speaker_genders) }}
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Submit Transcription</button>
@@ -299,70 +138,9 @@
         </div>
     </div>
 
-    <!-- Admin Profile Selection (opened with Ctrl+`) -->
-    <div id="adminSelectModal" class="profile-selector" style="display:none;">
-        <div class="selector-content">
-            <h2 class="selector-title">Who's transcribing?</h2>
-            <div class="profile-grid">
-                <button type="button" class="profile-card" onclick="selectAdmin('chirath')" data-admin="chirath">
-                    <div class="profile-avatar has-image loading" id="avatar-chirath">
-                        <img src="/static/assets/profiles/chirath.png" alt="Chirath" onerror="this.parentElement.innerHTML='C'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
-                    </div>
-                    <div class="profile-name">Chirath</div>
-                </button>
-                <button type="button" class="profile-card" onclick="selectAdmin('rusira')" data-admin="rusira">
-                    <div class="profile-avatar has-image loading" id="avatar-rusira">
-                        <img src="/static/assets/profiles/rusira.png" alt="Rusira" onerror="this.parentElement.innerHTML='R'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
-                    </div>
-                    <div class="profile-name">Rusira</div>
-                </button>
-                <button type="button" class="profile-card" onclick="selectAdmin('kokila')" data-admin="kokila">
-                    <div class="profile-avatar has-image loading" id="avatar-kokila">
-                        <img src="/static/assets/profiles/kokila.png" alt="Kokila" onerror="this.parentElement.innerHTML='K'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
-                    </div>
-                    <div class="profile-name">Kokila</div>
-                </button>
-                <button type="button" class="profile-card" onclick="selectAdmin('sahan')" data-admin="sahan">
-                    <div class="profile-avatar has-image loading" id="avatar-sahan">
-                        <img src="/static/assets/profiles/sahan.png" alt="Sahan" onerror="this.parentElement.innerHTML='S'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
-                    </div>
-                    <div class="profile-name">Sahan</div>
-                </button>
-            </div>
-        </div>
-    </div>
+    {{ render_admin_selection_modal() }}
 
-    <!-- Floating Leaderboard Button (Admin Only) -->
-    <button id="openLeaderboardBtn" class="floating-leaderboard-btn" title="Admin Leaderboard" aria-label="Open admin leaderboard" style="display: none;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M17 3H7v2H3v4a5 5 0 0 0 5 5h.08A7.001 7.001 0 0 0 12 20a7.001 7.001 0 0 0 3.92-6H16a5 5 0 0 0 5-5V5h-4V3zm-2 2v4a5 5 0 0 1-4 4.9V5h4zM5 7V5h4v8.9A5 5 0 0 1 5 7zm11 12H8v2h8v-2z"/>
-        </svg>
-    </button>
-
-    <!-- Leaderboard Modal -->
-    <div id="leaderboardModal" class="modal" style="display:none;">
-        <div class="modal-content leaderboard-modal">
-            <div class="modal-header">
-                <h3>Admin Leaderboard</h3>
-                <span class="modal-close" onclick="closeLeaderboardModal()">&times;</span>
-            </div>
-            <div class="leaderboard-tabs" role="tablist">
-                <button type="button" class="lb-tab active" data-range="all" aria-selected="true">All Time</button>
-                <button type="button" class="lb-tab" data-range="week" aria-selected="false">This Week</button>
-                <button type="button" class="lb-tab" data-range="month" aria-selected="false">This Month</button>
-            </div>
-            <div id="leaderboardContainer" class="leaderboard-body">
-                <div class="lb-loading">
-                    <div class="lb-spinner"></div>
-                    <div>Loading leaderboard…</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeLeaderboardModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
+    {{ render_admin_leaderboard_ui() }}
     <script src="/static/script.js"></script>
     <script src="/static/sin-phonetic-ime.js"></script>
     <script>

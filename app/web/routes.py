@@ -7,6 +7,7 @@ endpoints for dynamic content loading.
 """
 
 import logging
+import json
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -79,6 +80,84 @@ async def transcription_home(
             }
         )
 
+
+@router.get("/validate", response_class=HTMLResponse)
+async def validation_dashboard(
+    request: Request,
+    db: AsyncSession = Depends(get_async_database_session)
+):
+    """
+    Render the validation page for reviewing community submissions.
+    """
+    try:
+        record = await TranscriptionService.get_next_unvalidated_transcription(db)
+        initial_item = None
+        transcription_defaults: dict = {}
+
+        if record:
+            transcription, audio = record
+            signed_url = await gcs_service.generate_signed_url(audio.audio_filename)
+
+            audio_payload = {
+                "audio_id": str(audio.audio_id),
+                "audio_filename": audio.audio_filename,
+                "google_transcription": audio.google_transcription,
+                "transcription_count": audio.transcription_count,
+                "gcs_signed_url": signed_url,
+            }
+
+            transcription_payload = {
+                "trans_id": str(transcription.trans_id),
+                "audio_id": str(transcription.audio_id),
+                "transcription": transcription.transcription,
+                "speaker_gender": transcription.speaker_gender,
+                "has_noise": transcription.has_noise,
+                "is_code_mixed": transcription.is_code_mixed,
+                "is_speaker_overlappings_exist": transcription.is_speaker_overlappings_exist,
+                "is_audio_suitable": transcription.is_audio_suitable,
+                "admin": transcription.admin,
+                "is_validated": transcription.is_validated,
+                "created_at": transcription.created_at.isoformat() if transcription.created_at else None,
+            }
+
+            initial_item = {
+                "audio": audio_payload,
+                "transcription": transcription_payload,
+            }
+
+            transcription_defaults = {
+                "transcription": transcription_payload["transcription"],
+                "speaker_gender": transcription_payload["speaker_gender"],
+                "has_noise": transcription_payload["has_noise"],
+                "is_code_mixed": transcription_payload["is_code_mixed"],
+                "is_speaker_overlappings_exist": transcription_payload["is_speaker_overlappings_exist"],
+                "is_audio_suitable": transcription_payload["is_audio_suitable"],
+                "admin": transcription_payload["admin"],
+            }
+
+        context = {
+            "request": request,
+            "speaker_genders": SPEAKER_GENDER_OPTIONS,
+            "initial_item": initial_item,
+            "initial_item_json": json.dumps(initial_item, default=str) if initial_item else "null",
+            "transcription_defaults": transcription_defaults,
+            "error_message": None,
+        }
+        return templates.TemplateResponse("validate.html", context)
+    except Exception as exc:
+        logger.error(f"Error loading validation page: {exc}")
+        return templates.TemplateResponse(
+            "validate.html",
+            {
+                "request": request,
+                "speaker_genders": SPEAKER_GENDER_OPTIONS,
+                "initial_item": None,
+                "initial_item_json": "null",
+                "transcription_defaults": {},
+                "error_message": "Failed to load validation data. Please try again.",
+            },
+            status_code=500,
+        )
 
 @router.post("/submit-transcription")
 async def submit_transcription(
@@ -278,3 +357,5 @@ async def get_admin_leaderboard(
             },
             status_code=500
         )
+
+

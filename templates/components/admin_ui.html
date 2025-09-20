@@ -1,0 +1,73 @@
+{% macro render_admin_indicator() -%}
+<div id="adminIndicator" style="display:none; margin-top:8px;">
+    <span style="background:#243b55;border:1px solid #355a7b;color:#cfe6ff;padding:4px 8px;border-radius:12px;font-size:0.85rem;">
+        Admin: <strong id="adminName"></strong>
+    </span>
+    <button type="button" id="clearAdminBtn" class="btn btn-secondary" style="margin-left:8px;padding:4px 8px;font-size:0.8rem;">Clear</button>
+</div>
+{%- endmacro %}
+
+{% macro render_admin_selection_modal() -%}
+<div id="adminSelectModal" class="profile-selector" style="display:none;">
+    <div class="selector-content">
+        <h2 class="selector-title">Who's transcribing?</h2>
+        <div class="profile-grid">
+            <button type="button" class="profile-card" onclick="selectAdmin('chirath')" data-admin="chirath">
+                <div class="profile-avatar has-image loading" id="avatar-chirath">
+                    <img src="/static/assets/profiles/chirath.png" alt="Chirath" onerror="this.parentElement.innerHTML='C'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
+                </div>
+                <div class="profile-name">Chirath</div>
+            </button>
+            <button type="button" class="profile-card" onclick="selectAdmin('rusira')" data-admin="rusira">
+                <div class="profile-avatar has-image loading" id="avatar-rusira">
+                    <img src="/static/assets/profiles/rusira.png" alt="Rusira" onerror="this.parentElement.innerHTML='R'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
+                </div>
+                <div class="profile-name">Rusira</div>
+            </button>
+            <button type="button" class="profile-card" onclick="selectAdmin('kokila')" data-admin="kokila">
+                <div class="profile-avatar has-image loading" id="avatar-kokila">
+                    <img src="/static/assets/profiles/kokila.png" alt="Kokila" onerror="this.parentElement.innerHTML='K'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
+                </div>
+                <div class="profile-name">Kokila</div>
+            </button>
+            <button type="button" class="profile-card" onclick="selectAdmin('sahan')" data-admin="sahan">
+                <div class="profile-avatar has-image loading" id="avatar-sahan">
+                    <img src="/static/assets/profiles/sahan.png" alt="Sahan" onerror="this.parentElement.innerHTML='S'; this.parentElement.classList.remove('has-image', 'loading');" onload="this.parentElement.classList.remove('loading');">
+                </div>
+                <div class="profile-name">Sahan</div>
+            </button>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro render_admin_leaderboard_ui() -%}
+<button id="openLeaderboardBtn" class="floating-leaderboard-btn" title="Admin Leaderboard" aria-label="Open admin leaderboard" style="display: none;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M17 3H7v2H3v4a5 5 0 0 0 5 5h.08A7.001 7.001 0 0 0 12 20a7.001 7.001 0 0 0 3.92-6H16a5 5 0 0 0 5-5V5h-4V3zm-2 2v4a5 5 0 0 1-4 4.9V5h4zM5 7V5h4v8.9A5 5 0 0 1 5 7zm11 12H8v2h8v-2z"/>
+    </svg>
+</button>
+
+<div id="leaderboardModal" class="modal" style="display:none;">
+    <div class="modal-content leaderboard-modal">
+        <div class="modal-header">
+            <h3>Admin Leaderboard</h3>
+            <span class="modal-close" onclick="closeLeaderboardModal()">&times;</span>
+        </div>
+        <div class="leaderboard-tabs" role="tablist">
+            <button type="button" class="lb-tab active" data-range="all" aria-selected="true">All Time</button>
+            <button type="button" class="lb-tab" data-range="week" aria-selected="false">This Week</button>
+            <button type="button" class="lb-tab" data-range="month" aria-selected="false">This Month</button>
+        </div>
+        <div id="leaderboardContainer" class="leaderboard-body">
+            <div class="lb-loading">
+                <div class="lb-spinner"></div>
+                <div>Loading leaderboard.</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeLeaderboardModal()">Close</button>
+        </div>
+    </div>
+</div>
+{%- endmacro %}

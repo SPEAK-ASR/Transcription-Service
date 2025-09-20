@@ -1,0 +1,98 @@
+{% macro render_transcription_input(initial_text="", label="Your Transcription *", placeholder="Please type exactly what you hear in the audio...", textarea_id="transcription") -%}
+<div class="transcription-input-section">
+    <div class="form-group">
+        <label for="{{ textarea_id }}">{{ label }}</label>
+
+        <!-- Built-in Sinhala IME toggle (default OFF) -->
+        <div class="ime-toggle-container" style="margin-bottom: 8px;">
+            <span class="ime-toggle-label">Don't have a Sinhala keyboard? Try the built-in Sinhala phonetic keyboard. <a href="https://facts.helakuru.lk/sinhala-typing/phonetic" target="_blank" rel="noopener noreferrer" style="color: #3498db; text-decoration: underline;">keyboard guide <svg style="width:12px;height:12px;vertical-align:middle;" viewBox="0 0 24 24" fill="#3498db"><path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg></a></span>
+            <label class="toggle-switch" aria-label="Enable Sinhala phonetic keyboard">
+                <input type="checkbox" id="imeToggle" class="toggle-input" />
+                <span class="toggle-slider">
+                    <span class="toggle-text off">Off</span>
+                    <span class="toggle-text on">On</span>
+                </span>
+            </label>
+        </div>
+
+        <!-- Textarea wrapped to host the inline chip "?? | en" -->
+        <div class="ime-container">
+            <textarea
+                name="transcription"
+                id="{{ textarea_id }}"
+                required
+                placeholder="{{ placeholder }}"
+                rows="4"
+            >{{- initial_text | default('', true) -}}</textarea>
+            <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">?? | en</button>
+        </div>
+
+        <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro render_audio_suitability(is_audio_suitable=True, mode='transcription') -%}
+<div class="suitability-section">
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox"
+                   id="audioNotSuitable"
+                   {% if mode == 'transcription' %}
+                   onchange="handleAudioSuitabilityChange(this)"
+                   {% else %}
+                   onchange="handleValidationAudioSuitabilityChange(this)"
+                   {% endif %}
+                   {% if is_audio_suitable is not none and not is_audio_suitable %}checked{% endif %}>
+            <span class="checkmark"></span>
+            This audio is not suitable for transcription
+        </label>
+        <small class="field-note">Check this if the audio has issues that make it impossible to transcribe accurately (e.g., completely inaudible, corrupted, wrong language, etc.)</small>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro render_metadata_fields(speaker_genders, values=None) -%}
+{% set metadata = values or {} %}
+{% set selected_gender = metadata.get('speaker_gender', '') %}
+{% set has_noise = metadata.get('has_noise', False) %}
+{% set is_code_mixed = metadata.get('is_code_mixed', False) %}
+{% set overlap_value = metadata.get('is_speaker_overlapping', metadata.get('is_speaker_overlappings_exist', False)) %}
+<div class="metadata-section">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="speaker_gender">Speaker Gender *</label>
+            <select name="speaker_gender" id="speaker_gender" required>
+                <option value="" {% if not selected_gender %}selected{% endif %}>Select gender...</option>
+                {% for gender in speaker_genders %}
+                <option value="{{ gender }}" {% if selected_gender == gender %}selected{% endif %}>{{ gender.title() }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_noise" value="true" {% if has_noise %}checked{% endif %}>
+            <span class="checkmark"></span>
+            Audio contains background noise
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="is_code_mixed" value="true" {% if is_code_mixed %}checked{% endif %}>
+            <span class="checkmark"></span>
+            Audio contains code-mixed content (multiple languages)
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="is_speaker_overlapping" value="true" {% if overlap_value %}checked{% endif %}>
+            <span class="checkmark"></span>
+            Multiple speakers are talking at the same time
+        </label>
+    </div>
+</div>
+{%- endmacro %}

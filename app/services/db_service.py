@@ -15,7 +15,7 @@ from io import StringIO
 import pandas as pd
 
 from app.models import Audio, Transcriptions
-from app.schemas import TranscriptionCreate
+from app.schemas import TranscriptionCreate, TranscriptionValidationUpdate
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,33 @@ class AudioService:
             Optional[Audio]: Claimed audio file or None if no files available
         """
         return await AudioService.claim_audio_for_transcription(db)
+
+    @staticmethod
+    async def lease_audio_for_validation(db: AsyncSession, audio_id: UUID) -> bool:
+        """Lease an audio item while it is under validation."""
+        try:
+            query = text(f"""
+                UPDATE "Audio"
+                SET leased_until = NOW() + INTERVAL '{settings.AUDIO_LEASE_TIMEOUT_MINUTES} minutes'
+                WHERE audio_id = :audio_id
+                RETURNING audio_id;
+            """)
+            result = await db.execute(query, {"audio_id": audio_id})
+            row = result.fetchone()
+
+            if row:
+                await db.commit()
+                logger.info(f"Leased audio {audio_id} for validation")
+                return True
+
+            await db.rollback()
+            logger.warning(f"Attempted to lease audio for validation but no audio found: {audio_id}")
+            return False
+
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error leasing audio {audio_id} for validation: {e}")
+            raise
 
     @staticmethod
     async def release_audio_lease(db: AsyncSession, audio_id: UUID) -> bool:
@@ -292,4 +319,93 @@ class TranscriptionService:
             return result.scalars().all()
         except Exception as e:
             logger.error(f"Error getting transcriptions for audio: {e}")
+            raise
+
+    @staticmethod
+    async def get_next_unvalidated_transcription(
+        db: AsyncSession
+    ) -> Optional[Tuple[Transcriptions, Audio]]:
+        """Fetch the oldest transcription that still needs validation."""
+        try:
+            stmt = (
+                select(Transcriptions, Audio)
+                .join(Audio, Transcriptions.audio_id == Audio.audio_id)
+                .where(Transcriptions.is_validated.is_(False))
+                .order_by(Transcriptions.created_at.asc())
+                .limit(1)
+                .with_for_update(skip_locked=True)
+            )
+            result = await db.execute(stmt)
+            row = result.first()
+            if row:
+                transcription_obj, audio_obj = row[0], row[1]
+
+                leased = await AudioService.lease_audio_for_validation(db, audio_obj.audio_id)
+                if not leased:
+                    return None
+
+                return transcription_obj, audio_obj
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching next unvalidated transcription: {e}")
+            raise
+
+    @staticmethod
+    async def validate_transcription(
+        db: AsyncSession,
+        trans_id: UUID,
+        update_data: TranscriptionValidationUpdate
+    ) -> Transcriptions:
+        """Update transcription fields and mark the record as validated."""
+        try:
+            result = await db.execute(
+                select(Transcriptions).where(Transcriptions.trans_id == trans_id)
+            )
+            transcription = result.scalar_one_or_none()
+            if not transcription:
+                raise ValueError(f"Transcription not found: {trans_id}")
+
+            transcription_text = (update_data.transcription or '').strip()
+            transcription.speaker_gender = update_data.speaker_gender
+            transcription.has_noise = update_data.has_noise
+            transcription.is_code_mixed = update_data.is_code_mixed
+            transcription.is_speaker_overlappings_exist = update_data.is_speaker_overlappings_exist
+            transcription.is_audio_suitable = (
+                update_data.is_audio_suitable
+                if update_data.is_audio_suitable is not None
+                else transcription.is_audio_suitable
+            )
+            transcription.admin = update_data.admin
+            transcription.is_validated = True
+
+            await db.commit()
+            await db.refresh(transcription)
+
+            try:
+                released = await AudioService.release_audio_lease(db, transcription.audio_id)
+                if not released:
+                    logger.warning(
+                        "Lease release skipped for audio %s after validation",
+                        transcription.audio_id
+                    )
+            except Exception as lease_error:
+                logger.warning(
+                    "Failed to release lease for audio %s after validation: %s",
+                    transcription.audio_id,
+                    lease_error
+                )
+
+            logger.info(
+                "Validated transcription %s (audio %s) by admin %s",
+                transcription.trans_id,
+                transcription.audio_id,
+                update_data.admin or 'unknown'
+            )
+            return transcription
+        except ValueError:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error validating transcription {trans_id}: {e}")
             raise
