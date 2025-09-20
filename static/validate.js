@@ -75,7 +75,6 @@
             is_code_mixed: data.has('is_code_mixed'),
             is_speaker_overlappings_exist: data.has('is_speaker_overlapping'),
             is_audio_suitable: (data.get('is_audio_suitable') || 'true') === 'true',
-            admin: data.get('admin') || null,
         };
     }
 
@@ -131,15 +130,6 @@
         const audio = item.audio;
 
         form.dataset.transcriptionId = transcription.trans_id;
-
-
-        const adminField = document.getElementById('adminField');
-        if (adminField) {
-            adminField.value = transcription.admin || '';
-            if (typeof applyAdminSelectionToForm === 'function') {
-                applyAdminSelectionToForm(transcription.admin || '');
-            }
-        }
 
         const transcriptionField = form.querySelector('textarea[name="transcription"]');
         if (transcriptionField) {

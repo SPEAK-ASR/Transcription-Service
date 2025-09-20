@@ -87,7 +87,6 @@ class TranscriptionValidationUpdate(BaseModel):
     is_code_mixed: bool = Field(default=False, description="Whether the audio contains code-mixed content")
     is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
     is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio remains suitable for transcription")
-    admin: Optional[AdminName] = Field(default=None, description="Admin attribution if validated by an admin")
 
     @field_validator("transcription")
     @classmethod

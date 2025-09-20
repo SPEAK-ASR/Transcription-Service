@@ -375,7 +375,7 @@ class TranscriptionService:
                 if update_data.is_audio_suitable is not None
                 else transcription.is_audio_suitable
             )
-            transcription.admin = update_data.admin
+            # Keep the original admin value unchanged during validation
             transcription.is_validated = True
 
             await db.commit()
@@ -396,10 +396,10 @@ class TranscriptionService:
                 )
 
             logger.info(
-                "Validated transcription %s (audio %s) by admin %s",
+                "Validated transcription %s (audio %s) - original admin: %s",
                 transcription.trans_id,
                 transcription.audio_id,
-                update_data.admin or 'unknown'
+                transcription.admin or 'none'
             )
             return transcription
         except ValueError:

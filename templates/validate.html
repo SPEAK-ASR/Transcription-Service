@@ -120,7 +120,7 @@
     {{ render_admin_leaderboard_ui() }}
 
     <script>
-        window.initialValidationItem = null;
+        window.initialValidationItem = {{ initial_item_json | safe }};
     </script>
     <script src="/static/script.js"></script>
     <script src="/static/sin-phonetic-ime.js"></script>
