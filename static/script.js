@@ -225,10 +225,9 @@ function initializeAudio() {
     });
     
     audioPlayer.addEventListener('abort', function() {
-        console.warn('Audio download aborted');
         // Only show notification if it's not during a new audio load
         if (!window.isLoadingNewAudio) {
-            showNotification('Audio download was interrupted.', 'error');
+            console.warn('Audio download aborted unexpectedly');
         }
     });
 }

@@ -53,29 +53,7 @@
         {% endif %}
 
         <section class="audio-section" id="validationWorkArea" {% if not has_item %}style="display:none;"{% endif %}>
-            {% if audio_context.google_transcription %}
-            <div class="reference-section" id="referenceSection" style="display: none;">
-                <div class="reference-header">
-                    <h3>Reference Transcription</h3>
-                    <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                        </svg>
-                        Quick Copy
-                    </button>
-                </div>
-                <div class="reference-text">{{ audio_context.google_transcription }}</div>
-                <small class="reference-note">Reference transcript - visible to validators only.</small>
-            </div>
-            {% endif %}
-
             {{ render_audio_player(audio_context) }}
-
-            <div class="validation-summary">
-                <div class="summary-row"><strong>Audio file:</strong> <span id="summaryAudioFilename">{{ audio_context.audio_filename or '---' }}</span></div>
-                <div class="summary-row"><strong>Created at:</strong> <span id="summaryCreatedAt">{{ transcription_context.created_at or '---' }}</span></div>
-                <div class="summary-row"><strong>Current status:</strong> <span id="summaryStatus">{{ 'Validated' if transcription_context.is_validated else 'Pending' }}</span></div>
-            </div>
 
             <form class="transcription-form" id="transcriptionForm" data-form-mode="validation">
                 <input type="hidden" name="trans_id" value="{{ transcription_context.trans_id }}">
@@ -87,6 +65,27 @@
                     initial_text=transcription_defaults.get('transcription', ''),
                     label='Validated Transcription *'
                 ) }}
+
+                {% if audio_context.google_transcription %}
+                <div class="reference-toggle-section">
+                    <button type="button" class="reference-toggle-btn" id="referenceToggleBtn" onclick="toggleReferenceTranscription()">
+                        <span class="toggle-icon">▶</span>
+                        Show Google Transcription Reference
+                    </button>
+                    <div class="reference-section-val" id="referenceSection">
+                        <div class="reference-content">
+                            <div class="reference-text">{{ audio_context.google_transcription }}</div>
+                            <button type="button" class="reference-copy-btn" onclick="copyReferenceText()" title="Copy reference text to transcription field">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                </svg>
+                                Quick Copy
+                            </button>
+                        </div>
+                        <small class="reference-note">Reference transcript from Google Speech-to-Text - use as guidance only.</small>
+                    </div>
+                </div>
+                {% endif %}
 
                 {{ render_audio_suitability(
                     is_audio_suitable=transcription_defaults.get('is_audio_suitable', True),
@@ -119,8 +118,11 @@
 
     {{ render_admin_leaderboard_ui() }}
 
+    <script type="application/json" id="validation-data">{{ initial_item_json | safe }}</script>
     <script>
-        window.initialValidationItem = {{ initial_item_json | safe }};
+        // Parse the JSON data from the script tag
+        const dataScript = document.getElementById('validation-data');
+        window.initialValidationItem = dataScript ? JSON.parse(dataScript.textContent) : null;
     </script>
     <script src="/static/script.js"></script>
     <script src="/static/sin-phonetic-ime.js"></script>

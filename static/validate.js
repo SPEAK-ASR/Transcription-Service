@@ -7,6 +7,12 @@
             return;
         }
 
+        // // Ensure reference section is hidden by default on page load
+        // const referenceSection = document.getElementById('referenceSection');
+        // if (referenceSection) {
+        //     referenceSection.style.display = 'none';
+        // }
+
         const submitBtn = document.getElementById('validateSubmitBtn');
         const nextBtn = document.getElementById('fetchNextBtn');
 
@@ -151,14 +157,23 @@
             suitabilityCheckbox.checked = transcription.is_audio_suitable === false;
         }
 
+        // Handle reference section
+        const referenceToggleSection = document.querySelector('.reference-toggle-section');
         const referenceSection = document.getElementById('referenceSection');
         const referenceText = referenceSection ? referenceSection.querySelector('.reference-text') : null;
-        if (referenceSection && referenceText) {
+        const toggleBtn = document.getElementById('referenceToggleBtn');
+        const toggleIcon = toggleBtn ? toggleBtn.querySelector('.toggle-icon') : null;
+        
+        if (referenceToggleSection && referenceSection && referenceText) {
             if (audio.google_transcription) {
                 referenceText.textContent = audio.google_transcription;
-            } else {
-                referenceText.textContent = '';
+                referenceToggleSection.style.display = 'block';
+                // Reset to collapsed state
                 referenceSection.style.display = 'none';
+                if (toggleIcon) toggleIcon.textContent = '▶';
+                if (toggleBtn) toggleBtn.innerHTML = '<span class="toggle-icon">▶</span> Show Google Transcription Reference';
+            } else {
+                referenceToggleSection.style.display = 'none';
             }
         }
 
@@ -223,6 +238,44 @@
         const hiddenField = document.getElementById('audioSuitableField');
         if (hiddenField) {
             hiddenField.value = checkbox.checked ? 'false' : 'true';
+        }
+    };
+
+    // Toggle reference transcription visibility
+    window.toggleReferenceTranscription = function() {
+        const referenceSection = document.getElementById('referenceSection');
+        const toggleBtn = document.getElementById('referenceToggleBtn');
+        const toggleIcon = toggleBtn ? toggleBtn.querySelector('.toggle-icon') : null;
+        
+        if (!referenceSection || !toggleBtn || !toggleIcon) return;
+        
+        const isHidden = referenceSection.style.display === 'none';
+        
+        if (isHidden) {
+            referenceSection.style.display = 'block';
+            toggleIcon.textContent = '▼';
+            toggleBtn.innerHTML = toggleBtn.innerHTML.replace('Show Google Transcription Reference', 'Hide Google Transcription Reference');
+        } else {
+            referenceSection.style.display = 'none';
+            toggleIcon.textContent = '▶';
+            toggleBtn.innerHTML = toggleBtn.innerHTML.replace('Hide Google Transcription Reference', 'Show Google Transcription Reference');
+        }
+    };
+
+    // Copy reference text function
+    window.copyReferenceText = function() {
+        const referenceText = document.querySelector('.reference-text');
+        const transcriptionTextarea = document.getElementById('transcription');
+        
+        if (referenceText && transcriptionTextarea) {
+            transcriptionTextarea.value = referenceText.textContent.trim();
+            transcriptionTextarea.focus();
+            transcriptionTextarea.dispatchEvent(new Event('input'));
+            
+            // Show notification if available
+            if (typeof showNotification === 'function') {
+                showNotification('Reference text copied. Please review and edit as needed.', 'info');
+            }
         }
     };
 })();

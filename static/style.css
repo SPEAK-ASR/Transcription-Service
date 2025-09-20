@@ -1588,3 +1588,84 @@ footer {
 .validation-summary .summary-row + .summary-row {
     margin-top: 6px;
 }
+
+/* Reference Toggle Section */
+.reference-toggle-section {
+    margin-top: -8px;
+    margin-bottom: 16px;
+}
+
+.reference-toggle-btn {
+    background: none;
+    border: none;
+    color: #4a9eff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s ease;
+}
+
+.reference-toggle-btn:hover {
+    color: #6bb6ff;
+}
+
+.toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.reference-section-val {
+    margin-top: 12px;
+    padding: 12px;
+    background: #1e2a1e;
+    border: 1px solid #2d4a2d;
+    border-radius: 6px;
+    position: relative;
+    display: none; /* Hidden by default */
+}
+
+.reference-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.reference-text {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #b8d8b8;
+    word-wrap: break-word;
+}
+
+.reference-copy-btn {
+    background: #2d4a2d;
+    border: 1px solid #3d5a3d;
+    color: #b8d8b8;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.reference-copy-btn:hover {
+    background: #3d5a3d;
+    color: #c8e8c8;
+}
+
+.reference-note {
+    display: block;
+    margin-top: 8px;
+    color: #888;
+    font-style: italic;
+    font-size: 0.8rem;
+}
