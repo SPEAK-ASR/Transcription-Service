@@ -847,6 +847,10 @@ textarea {
     font-size: 1.3rem;
 }
 
+.no-audio p {
+    margin-bottom: 16px;
+}
+
 /* Footer */
 footer {
     background: #111;
