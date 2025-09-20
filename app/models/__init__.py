@@ -60,6 +60,8 @@ class Transcriptions(Base):
         is_code_mixed: Whether multiple languages are present
         is_speaker_overlappings_exist: Whether multiple speakers overlap
         is_audio_suitable: Whether audio is suitable for transcription
+        admin: Admin who submitted the transcription (if any)
+        is_validated: Whether the transcription is validated (True for admin submissions)
         created_at: Timestamp of transcription creation
         audio: Relationship back to the audio file
     """
@@ -93,6 +95,9 @@ class Transcriptions(Base):
         nullable=True,
         default=None
     )
+    
+    # Validation status - True if submitted by admin, False otherwise
+    is_validated = Column(Boolean, default=False, nullable=False, index=True)
     
     # Audit trail
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)

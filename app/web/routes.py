@@ -98,6 +98,7 @@ async def submit_transcription(
     """
     try:
         # Validate and create transcription
+        # The is_validated field will be automatically set based on admin presence
         transcription_data = TranscriptionCreate(
             audio_id=UUID(audio_id),
             transcription=transcription.strip(),
@@ -106,7 +107,8 @@ async def submit_transcription(
             is_code_mixed=is_code_mixed,
             is_speaker_overlappings_exist=is_speaker_overlapping,
             is_audio_suitable=is_audio_suitable,
-            admin=admin if admin else None
+            admin=admin if admin else None,
+            is_validated=bool(admin)  # True if admin is provided, False otherwise
         )
         
         # Submit the transcription

@@ -270,6 +270,7 @@ class TranscriptionService:
             is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
             is_audio_suitable=transcription_data.is_audio_suitable,
             admin=transcription_data.admin,
+            is_validated=transcription_data.is_validated
         )
 
         db.add(new_transcription)
@@ -278,6 +279,7 @@ class TranscriptionService:
         logger.info(
             f"Created new transcription: {new_transcription.trans_id} "
             f"for audio: {transcription_data.audio_id} "
+            f"(validated: {transcription_data.is_validated}, admin: {transcription_data.admin}) "
             f"(transcription_count updated by trigger)"
         )
         return new_transcription
