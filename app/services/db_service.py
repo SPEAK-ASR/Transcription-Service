@@ -9,7 +9,7 @@ SQLAlchemy sessions for optimal performance.
 import logging
 from typing import Optional, List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select, text, func
 from uuid import UUID
 from io import StringIO
 import pandas as pd
@@ -348,6 +348,31 @@ class TranscriptionService:
             return None
         except Exception as e:
             logger.error(f"Error fetching next unvalidated transcription: {e}")
+            raise
+
+    @staticmethod
+    async def get_validation_progress_counts(
+        db: AsyncSession
+    ) -> dict:
+        """Return counts of pending and completed validations."""
+        try:
+            total_stmt = select(func.count()).select_from(Transcriptions)
+            pending_stmt = (
+                select(func.count())
+                .select_from(Transcriptions)
+                .where(Transcriptions.is_validated.is_(False))
+            )
+
+            total_result = await db.execute(total_stmt)
+            pending_result = await db.execute(pending_stmt)
+
+            total = int(total_result.scalar_one())
+            pending = int(pending_result.scalar_one())
+            completed = max(total - pending, 0)
+
+            return {"total": total, "pending": pending, "completed": completed}
+        except Exception as exc:
+            logger.error("Error calculating validation progress counts: %s", exc)
             raise
 
     @staticmethod

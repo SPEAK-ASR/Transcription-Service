@@ -1,8 +1,22 @@
 (() => {
     const API_BASE = '/api/v1/validation';
 
+    const progressElements = {
+        container: null,
+        bar: null,
+        fill: null,
+        percent: null,
+        completed: null,
+        pending: null,
+        total: null,
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('transcriptionForm');
+
+        initializeProgressElements();
+        refreshValidationProgress();
+
         if (!form) {
             return;
         }
@@ -61,7 +75,9 @@
                 } else {
                     showNotification('Transcription validated successfully.', 'success');
                 }
-                
+
+                await refreshValidationProgress();
+
                 // Scroll to top of the page
                 window.scrollTo({
                     top: 0,
@@ -112,6 +128,7 @@
             if (response.status === 404) {
                 showNotification('No more pending transcriptions.', 'info');
                 applyValidationItem(null);
+                await refreshValidationProgress();
                 return;
             }
 
@@ -122,6 +139,7 @@
             const payload = await response.json();
             applyValidationItem(payload);
             showNotification('Loaded next transcription for validation.', 'success');
+            await refreshValidationProgress();
             
             // Scroll to top when new item is loaded
             window.scrollTo({
@@ -231,6 +249,68 @@
         if (statusEl) statusEl.textContent = is_validated ? 'Validated' : 'Pending';
     }
 
+    function initializeProgressElements() {
+        progressElements.container = document.getElementById('validationProgress');
+        progressElements.bar = document.getElementById('validationProgressBar');
+        progressElements.fill = document.getElementById('validationProgressFill');
+        progressElements.percent = document.getElementById('validationProgressPercent');
+        progressElements.completed = document.getElementById('validationCompletedCount');
+        progressElements.pending = document.getElementById('validationPendingCount');
+        progressElements.total = document.getElementById('validationTotalCount');
+    }
+
+    async function refreshValidationProgress() {
+        if (!progressElements.container) {
+            initializeProgressElements();
+        }
+
+        if (!progressElements.bar) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/stats`, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`Unexpected status ${response.status}`);
+            }
+            const stats = await response.json();
+            updateProgressBar(stats);
+        } catch (error) {
+            console.error('Error loading validation progress:', error);
+        }
+    }
+
+    function updateProgressBar(stats) {
+        if (!stats || typeof stats !== 'object') {
+            return;
+        }
+
+        const total = Math.max(Number(stats.total) || 0, 0);
+        const completed = Math.min(Math.max(Number(stats.completed) || 0, 0), total);
+        const pending = Math.max(Number(stats.pending) || total - completed, 0);
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 100;
+
+        if (progressElements.fill) {
+            progressElements.fill.style.width = `${percent}%`;
+        }
+        if (progressElements.percent) {
+            progressElements.percent.textContent = `${percent}%`;
+        }
+        if (progressElements.completed) {
+            progressElements.completed.textContent = completed.toLocaleString();
+        }
+        if (progressElements.pending) {
+            progressElements.pending.textContent = pending.toLocaleString();
+        }
+        if (progressElements.total) {
+            progressElements.total.textContent = total.toLocaleString();
+        }
+        if (progressElements.bar) {
+            progressElements.bar.setAttribute('aria-valuenow', String(percent));
+            progressElements.bar.setAttribute('aria-valuetext', `${percent}% complete`);
+        }
+    }
+
     function toggleAudioSection(showWorkArea) {
         const workArea = document.getElementById('validationWorkArea');
         const placeholder = document.getElementById('noValidationPlaceholder');
@@ -305,4 +385,3 @@
         }
     };
 })();
-

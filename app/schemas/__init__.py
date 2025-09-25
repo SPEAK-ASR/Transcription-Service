@@ -108,6 +108,12 @@ class ValidationQueueItem(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ValidationProgressResponse(BaseModel):
+    """Response model for validation progress summary."""
+    total: int = Field(..., description="Total number of transcriptions tracked for validation")
+    pending: int = Field(..., description="Transcriptions still awaiting validation")
+    completed: int = Field(..., description="Transcriptions marked as validated")
+
 class CSVUploadResult(BaseModel):
     """
     Response model for CSV upload results.
@@ -185,5 +191,3 @@ class AudioComparisonResponse(BaseModel):
         ..., description="Audio files that exist only in database"
     )
     matched_files_count: int = Field(..., description="Number of files that exist in both cloud and DB")
-
-

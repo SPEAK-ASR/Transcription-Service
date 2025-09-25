@@ -19,6 +19,7 @@ from app.schemas import (
     TranscriptionResponse,
     TranscriptionValidationUpdate,
     ValidationQueueItem,
+    ValidationProgressResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,23 @@ async def get_next_validation_item(
         logger.error("Error fetching validation item: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to load validation item")
 
+
+@router.get(
+    "/stats",
+    response_model=ValidationProgressResponse,
+    summary="Get validation progress counts",
+    tags=["Transcription Validation"],
+)
+async def get_validation_stats(
+    db: AsyncSession = Depends(get_async_database_session),
+) -> ValidationProgressResponse:
+    """Return counts for validation progress indicator on the dashboard."""
+    try:
+        counts = await TranscriptionService.get_validation_progress_counts(db)
+        return ValidationProgressResponse(**counts)
+    except Exception as exc:
+        logger.error("Error fetching validation stats: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to load validation progress")
 
 @router.put(
     "/{transcription_id}",

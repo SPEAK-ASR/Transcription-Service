@@ -17,7 +17,27 @@
             <p>Review, correct, and approve submitted transcripts</p>
             {{ render_admin_indicator() }}
         </header>
-
+        <section class="validation-progress" id="validationProgress">
+            <div class="progress-header">
+                <span class="progress-title">Validation Progress</span>
+                <span class="progress-percent" id="validationProgressPercent">0%</span>
+            </div>
+            <div
+                class="progress-track"
+                id="validationProgressBar"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+            >
+                <div class="progress-fill" id="validationProgressFill"></div>
+            </div>
+            <div class="progress-stats">
+                <span><strong id="validationCompletedCount">0</strong> validated</span>
+                <span><strong id="validationPendingCount">0</strong> remaining</span>
+                <span><strong id="validationTotalCount">0</strong> total</span>
+            </div>
+        </section>
         {% if error_message %}
         <div class="message error">
             <span class="icon">!</span>
