@@ -448,6 +448,7 @@ class TranscriptionService:
                 raise ValueError(f"Transcription not found: {trans_id}")
 
             transcription_text = (update_data.transcription or '').strip()
+            transcription.transcription = transcription_text
             transcription.speaker_gender = update_data.speaker_gender
             transcription.has_noise = update_data.has_noise
             transcription.is_code_mixed = update_data.is_code_mixed
