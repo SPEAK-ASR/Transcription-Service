@@ -325,27 +325,84 @@ class TranscriptionService:
     async def get_next_unvalidated_transcription(
         db: AsyncSession
     ) -> Optional[Tuple[Transcriptions, Audio]]:
-        """Fetch the oldest transcription that still needs validation."""
+        """
+        Fetch the next available transcription that needs validation.
+        
+        Uses a lease-based system similar to audio claiming to prevent multiple
+        users from getting the same transcription. Falls back to different
+        transcriptions if the first one is already being validated.
+        """
         try:
-            stmt = (
-                select(Transcriptions, Audio)
-                .join(Audio, Transcriptions.audio_id == Audio.audio_id)
-                .where(Transcriptions.is_validated.is_(False))
-                .order_by(Transcriptions.created_at.asc())
-                .limit(1)
-                .with_for_update(skip_locked=True)
-            )
-            result = await db.execute(stmt)
-            row = result.first()
-            if row:
-                transcription_obj, audio_obj = row[0], row[1]
-
-                leased = await AudioService.lease_audio_for_validation(db, audio_obj.audio_id)
-                if not leased:
-                    return None
-
-                return transcription_obj, audio_obj
+            # Use raw SQL query to properly handle lease expiration with NOW()
+            query = text("""
+                SELECT t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
+                       t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
+                       t.is_audio_suitable, t.admin, t.is_validated, t.created_at,
+                       a.audio_id, a.audio_filename, a.google_transcription, 
+                       a.transcription_count, a.leased_until
+                FROM "Transcriptions" t
+                JOIN "Audio" a ON t.audio_id = a.audio_id
+                WHERE t.is_validated = false
+                AND (a.leased_until IS NULL OR a.leased_until < NOW())
+                ORDER BY t.created_at ASC
+                LIMIT 5
+                FOR UPDATE OF t, a SKIP LOCKED
+            """)
+            
+            result = await db.execute(query)
+            rows = result.fetchall()
+            
+            # Try to lease each transcription until we find one that's available
+            for row in rows:
+                audio_id = row[1]  # t.audio_id from the query
+                
+                # Try to lease this audio for validation
+                leased = await AudioService.lease_audio_for_validation(db, audio_id)
+                if leased:
+                    # Create transcription and audio objects from the row data
+                    transcription_data = {
+                        'trans_id': row[0],
+                        'audio_id': row[1], 
+                        'transcription': row[2],
+                        'speaker_gender': row[3],
+                        'has_noise': row[4],
+                        'is_code_mixed': row[5],
+                        'is_speaker_overlappings_exist': row[6],
+                        'is_audio_suitable': row[7],
+                        'admin': row[8],
+                        'is_validated': row[9],
+                        'created_at': row[10]
+                    }
+                    
+                    audio_data = {
+                        'audio_id': row[11],
+                        'audio_filename': row[12],
+                        'google_transcription': row[13],
+                        'transcription_count': row[14],
+                        'leased_until': row[15]
+                    }
+                    
+                    # Create minimal objects for compatibility
+                    class TranscriptionObj:
+                        def __init__(self, data):
+                            for key, value in data.items():
+                                setattr(self, key, value)
+                    
+                    class AudioObj:
+                        def __init__(self, data):
+                            for key, value in data.items():
+                                setattr(self, key, value)
+                    
+                    transcription_obj = TranscriptionObj(transcription_data)
+                    audio_obj = AudioObj(audio_data)
+                    
+                    logger.info(f"Successfully claimed transcription {transcription_obj.trans_id} for validation")
+                    return transcription_obj, audio_obj
+            
+            # If we couldn't lease any of the transcriptions, return None
+            logger.info("No transcriptions available for validation at this time")
             return None
+            
         except Exception as e:
             logger.error(f"Error fetching next unvalidated transcription: {e}")
             raise
