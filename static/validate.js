@@ -169,7 +169,7 @@
             form.reset();
             form.dataset.transcriptionId = '';
             handleValidationAudioSuitabilityChange({ checked: false });
-            updateSummary({ audio_filename: '---', created_at: '---', is_validated: false });
+            updateSummary({ audio_filename: '---', created_at: '---', validated_at: null });
             toggleAudioSection(false);
             return;
         }
@@ -224,7 +224,7 @@
         updateSummary({
             audio_filename: audio.audio_filename,
             created_at: transcription.created_at,
-            is_validated: transcription.is_validated,
+            validated_at: transcription.validated_at,
         });
 
         if (typeof updatePageWithNewAudio === 'function') {
@@ -239,14 +239,14 @@
         }
     }
 
-    function updateSummary({ audio_filename, created_at, is_validated }) {
+    function updateSummary({ audio_filename, created_at, validated_at }) {
         const audioEl = document.getElementById('summaryAudioFilename');
         const createdEl = document.getElementById('summaryCreatedAt');
         const statusEl = document.getElementById('summaryStatus');
 
         if (audioEl) audioEl.textContent = audio_filename || '---';
         if (createdEl) createdEl.textContent = created_at || '---';
-        if (statusEl) statusEl.textContent = is_validated ? 'Validated' : 'Pending';
+        if (statusEl) statusEl.textContent = validated_at ? 'Validated' : 'Pending';
     }
 
     function initializeProgressElements() {

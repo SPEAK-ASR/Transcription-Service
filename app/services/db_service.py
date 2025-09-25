@@ -13,6 +13,7 @@ from sqlalchemy import select, text, func
 from uuid import UUID
 from io import StringIO
 import pandas as pd
+from datetime import datetime, timezone
 
 from app.models import Audio, Transcriptions
 from app.schemas import TranscriptionCreate, TranscriptionValidationUpdate
@@ -297,7 +298,7 @@ class TranscriptionService:
             is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
             is_audio_suitable=transcription_data.is_audio_suitable,
             admin=transcription_data.admin,
-            is_validated=transcription_data.is_validated
+            validated_at=transcription_data.validated_at
         )
 
         db.add(new_transcription)
@@ -306,7 +307,7 @@ class TranscriptionService:
         logger.info(
             f"Created new transcription: {new_transcription.trans_id} "
             f"for audio: {transcription_data.audio_id} "
-            f"(validated: {transcription_data.is_validated}, admin: {transcription_data.admin}) "
+            f"(validated_at: {transcription_data.validated_at}, admin: {transcription_data.admin}) "
             f"(transcription_count updated by trigger)"
         )
         return new_transcription
@@ -337,12 +338,12 @@ class TranscriptionService:
             query = text("""
                 SELECT t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
                        t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
-                       t.is_audio_suitable, t.admin, t.is_validated, t.created_at,
+                       t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
                        a.audio_id, a.audio_filename, a.google_transcription, 
                        a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
                 JOIN "Audio" a ON t.audio_id = a.audio_id
-                WHERE t.is_validated = false
+                WHERE t.validated_at IS NULL
                 AND (a.leased_until IS NULL OR a.leased_until < NOW())
                 ORDER BY t.created_at ASC
                 LIMIT 5
@@ -370,7 +371,7 @@ class TranscriptionService:
                         'is_speaker_overlappings_exist': row[6],
                         'is_audio_suitable': row[7],
                         'admin': row[8],
-                        'is_validated': row[9],
+                        'validated_at': row[9],
                         'created_at': row[10]
                     }
                     
@@ -417,7 +418,7 @@ class TranscriptionService:
             pending_stmt = (
                 select(func.count())
                 .select_from(Transcriptions)
-                .where(Transcriptions.is_validated.is_(False))
+                .where(Transcriptions.validated_at.is_(None))
             )
 
             total_result = await db.execute(total_stmt)
@@ -459,7 +460,7 @@ class TranscriptionService:
                 else transcription.is_audio_suitable
             )
             # Keep the original admin value unchanged during validation
-            transcription.is_validated = True
+            transcription.validated_at = datetime.now(timezone.utc)
 
             await db.commit()
             await db.refresh(transcription)

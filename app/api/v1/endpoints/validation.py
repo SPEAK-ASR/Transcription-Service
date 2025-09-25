@@ -65,7 +65,7 @@ async def get_next_validation_item(
             is_speaker_overlappings_exist=transcription.is_speaker_overlappings_exist,
             is_audio_suitable=transcription.is_audio_suitable,
             admin=transcription.admin,
-            is_validated=transcription.is_validated,
+            validated_at=transcription.validated_at,
             created_at=transcription.created_at,
         )
 
@@ -118,7 +118,7 @@ async def validate_transcription_item(
             is_speaker_overlappings_exist=updated.is_speaker_overlappings_exist,
             is_audio_suitable=updated.is_audio_suitable,
             admin=updated.admin,
-            is_validated=updated.is_validated,
+            validated_at=updated.validated_at,
             created_at=updated.created_at,
         )
     except ValueError as exc:

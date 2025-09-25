@@ -42,7 +42,7 @@ class TranscriptionCreate(BaseModel):
     is_speaker_overlappings_exist: bool = Field(default=False, description="Whether speakers are overlapping")
     is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio is suitable for transcription")
     admin: Optional[AdminName] = Field(default=None, description="Admin attribution if submitted by an admin")
-    is_validated: bool = Field(default=False, description="Whether the transcription is validated (True for admin submissions)")
+    validated_at: Optional[datetime] = Field(default=None, description="Timestamp when validated (set automatically for admin submissions)")
     
     @field_validator("transcription")
     @classmethod
@@ -71,7 +71,7 @@ class TranscriptionResponse(BaseModel):
     is_speaker_overlappings_exist: bool
     is_audio_suitable: Optional[bool]
     admin: Optional[AdminName]
-    is_validated: bool
+    validated_at: Optional[datetime]
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -8,6 +8,7 @@ endpoints for dynamic content loading.
 
 import logging
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -116,7 +117,7 @@ async def validation_dashboard(
                 "is_speaker_overlappings_exist": transcription.is_speaker_overlappings_exist,
                 "is_audio_suitable": transcription.is_audio_suitable,
                 "admin": transcription.admin,
-                "is_validated": transcription.is_validated,
+                "validated_at": transcription.validated_at.isoformat() if transcription.validated_at else None,
                 "created_at": transcription.created_at.isoformat() if transcription.created_at else None,
             }
 
@@ -177,7 +178,7 @@ async def submit_transcription(
     """
     try:
         # Validate and create transcription
-        # The is_validated field will be automatically set based on admin presence
+        # The validated_at field will be automatically set based on admin presence
         transcription_data = TranscriptionCreate(
             audio_id=UUID(audio_id),
             transcription=transcription.strip(),
@@ -187,7 +188,7 @@ async def submit_transcription(
             is_speaker_overlappings_exist=is_speaker_overlapping,
             is_audio_suitable=is_audio_suitable,
             admin=admin if admin else None,
-            is_validated=bool(admin)  # True if admin is provided, False otherwise
+            validated_at=datetime.now(timezone.utc) if admin else None  # Set timestamp if admin, None otherwise
         )
         
         # Submit the transcription
