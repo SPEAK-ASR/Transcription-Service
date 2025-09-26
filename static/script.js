@@ -1399,4 +1399,66 @@ function fixPodiumRanks() {
     }
 }
 
+/**
+ * Clean up transcription text by removing unnecessary spaces and line breaks
+ * @param {string} textareaId - The ID of the textarea to clean
+ */
+function cleanupTranscriptionText(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) {
+        console.warn(`Textarea with ID '${textareaId}' not found`);
+        return;
+    }
+    
+    const originalText = textarea.value;
+    if (!originalText.trim()) {
+        // Show notification if textarea is empty
+        if (typeof showNotification === 'function') {
+            showNotification('Transcription field is empty. Nothing to clean.', 'info');
+        }
+        return;
+    }
+    
+    // Clean up the text:
+    // 1. Replace multiple spaces with single space
+    // 2. Replace tabs with single space
+    // 3. Remove spaces at the beginning and end of lines
+    // 4. Replace multiple consecutive line breaks with single line break
+    // 5. Trim leading and trailing whitespace
+    let cleanedText = originalText
+        .replace(/[ \t]+/g, ' ')           // Replace multiple spaces/tabs with single space
+        .replace(/[ \t]*\n[ \t]*/g, '\n') // Remove spaces around line breaks
+        .replace(/\n{3,}/g, '\n\n')       // Replace 3+ line breaks with 2
+        .trim();                          // Remove leading/trailing whitespace
+    
+    // Only update if text was actually changed
+    if (cleanedText !== originalText) {
+        textarea.value = cleanedText;
+        textarea.focus();
+        
+        // Trigger input event to update any listeners
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Show success notification
+        if (typeof showNotification === 'function') {
+            const spacesRemoved = (originalText.match(/[ \t]{2,}/g) || []).length;
+            const extraBreaksRemoved = (originalText.match(/\n{3,}/g) || []).length;
+            
+            let message = 'Text cleaned successfully!';
+            if (spacesRemoved > 0 || extraBreaksRemoved > 0) {
+                const parts = [];
+                if (spacesRemoved > 0) parts.push(`${spacesRemoved} extra space${spacesRemoved > 1 ? 's' : ''}`);
+                if (extraBreaksRemoved > 0) parts.push(`${extraBreaksRemoved} extra line break${extraBreaksRemoved > 1 ? 's' : ''}`);
+                message = `Text cleaned! Removed ${parts.join(' and ')}.`;
+            }
+            showNotification(message, 'success');
+        }
+    } else {
+        // Text was already clean
+        if (typeof showNotification === 'function') {
+            showNotification('Text is already clean. No changes made.', 'info');
+        }
+    }
+}
+
 

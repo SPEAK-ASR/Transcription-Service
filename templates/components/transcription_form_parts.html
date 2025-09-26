@@ -1,4 +1,4 @@
-{% macro render_transcription_input(initial_text="", label="Your Transcription *", placeholder="Please type exactly what you hear in the audio...", textarea_id="transcription") -%}
+{% macro render_transcription_input(initial_text="", label="Your Transcription *", placeholder="Please type exactly what you hear in the audio...", textarea_id="transcription", show_cleanup_button=False) -%}
 <div class="transcription-input-section">
     <div class="form-group">
         <label for="{{ textarea_id }}">{{ label }}</label>
@@ -27,7 +27,19 @@
             <button type="button" id="imeChip" class="ime-chip" title="Toggle Sinhala/English (Ctrl+Space)" aria-label="Toggle Sinhala/English">?? | en</button>
         </div>
 
+        {% if show_cleanup_button %}
+        <div class="field-note-container">
+            <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
+            <button type="button" class="cleanup-text-btn" onclick="cleanupTranscriptionText('{{ textarea_id }}')" title="Remove extra spaces and line breaks">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+                </svg>
+                Clean Text
+            </button>
+        </div>
+        {% else %}
         <small class="field-note">Be as accurate as possible. Include punctuation and proper spelling.</small>
+        {% endif %}
     </div>
 </div>
 {%- endmacro %}
