@@ -198,7 +198,13 @@
 
         const suitabilityCheckbox = document.getElementById('audioNotSuitable');
         if (suitabilityCheckbox) {
-            suitabilityCheckbox.checked = transcription.is_audio_suitable === false;
+            const isNotSuitable = transcription.is_audio_suitable === false;
+            suitabilityCheckbox.checked = isNotSuitable;
+            if (typeof handleValidationAudioSuitabilityChange === 'function') {
+                handleValidationAudioSuitabilityChange(suitabilityCheckbox);
+            } else if (typeof window.handleValidationAudioSuitabilityChange === 'function') {
+                window.handleValidationAudioSuitabilityChange(suitabilityCheckbox);
+            }
         }
 
         // Handle reference section
@@ -385,3 +391,4 @@
         }
     };
 })();
+
