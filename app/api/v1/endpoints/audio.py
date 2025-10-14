@@ -6,6 +6,7 @@ This module provides REST API endpoints for:
 - Uploading CSV files with audio metadata
 - Listing files and metadata from Google Cloud Storage
 - Comparing cloud storage with database records
+- Bulk deleting audio files from Google Cloud Storage
 """
 
 import logging
@@ -19,6 +20,8 @@ from app.schemas import (
     FilesListResponse,
     AudioComparisonResponse,
     AudioFileComparisonItem,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
 )
 from app.services.gcs_service import gcs_service
 from app.services.db_service import AudioService
@@ -286,3 +289,82 @@ async def compare_audio_files(
             status_code=500,
             detail="Internal server error while comparing audio files"
         )
+
+
+@router.post(
+    "/bulk-delete",
+    response_model=BulkDeleteResponse,
+    summary="Bulk delete audio files from GCS bucket",
+    description="Delete multiple audio files from Google Cloud Storage bucket by providing a list of filenames"
+)
+async def bulk_delete_audio_files(
+    request: BulkDeleteRequest
+):
+    """
+    Bulk delete audio files from Google Cloud Storage bucket.
+    
+    This endpoint:
+    1. Accepts a list of audio filenames to delete
+    2. Attempts to delete each file from the GCS bucket
+    3. Returns detailed results for each file:
+       - Successfully deleted files
+       - Files not found in bucket
+       - Files that failed to delete (with error messages)
+    
+    **Note:** This operation is permanent and cannot be undone.
+    Files are deleted from cloud storage only, database records are not affected.
+    
+    Example request body:
+    ```json
+    {
+        "filenames": [
+            "14Ykn2QXnQ0-001.wav",
+            "14Ykn2QXnQ0-011.wav",
+            "audio_sample.mp3"
+        ]
+    }
+    ```
+    """
+    try:
+        if not request.filenames:
+            raise HTTPException(
+                status_code=400,
+                detail="Filenames list cannot be empty"
+            )
+        
+        logger.info(f"Starting bulk deletion of {len(request.filenames)} files from GCS bucket")
+        
+        # Perform bulk deletion
+        results = await gcs_service.bulk_delete_blobs(request.filenames)
+        
+        # Format failed results for response
+        failed_formatted = [
+            {
+                "filename": filename,
+                "error": error_msg
+            }
+            for filename, error_msg in results['failed']
+        ]
+        
+        logger.info(
+            f"Bulk deletion completed: {results['summary']['successful_count']} successful, "
+            f"{results['summary']['not_found_count']} not found, "
+            f"{results['summary']['failed_count']} failed"
+        )
+        
+        return BulkDeleteResponse(
+            summary=results['summary'],
+            successful=results['successful'],
+            not_found=results['not_found'],
+            failed=failed_formatted
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during bulk deletion: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error during bulk deletion: {str(e)}"
+        )
+

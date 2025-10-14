@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from app.models import Audio, Transcriptions
 from app.schemas import TranscriptionCreate, TranscriptionValidationUpdate
 from app.core.config import settings
+from app.services.gcs_service import gcs_service
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +282,10 @@ class TranscriptionService:
         background noise, code-mixing, and speaker information. The database
         automatically updates the parent audio record's transcription count.
         
+        If audio is marked as unsuitable (is_audio_suitable=False), this method will:
+        1. Update the Audio table to mark it as "not_suitable" and clear metadata
+        2. Create a Transcriptions entry with nullified fields
+        
         Args:
             db: Database session
             transcription_data: Validated transcription data
@@ -288,28 +293,99 @@ class TranscriptionService:
         Returns:
             Transcriptions: Created transcription record
         """
-        # Create the transcription object
-        new_transcription = Transcriptions(
-            audio_id=transcription_data.audio_id,
-            transcription=transcription_data.transcription,
-            speaker_gender=transcription_data.speaker_gender,
-            has_noise=transcription_data.has_noise,
-            is_code_mixed=transcription_data.is_code_mixed,
-            is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
-            is_audio_suitable=transcription_data.is_audio_suitable,
-            admin=transcription_data.admin,
-            validated_at=transcription_data.validated_at
-        )
+        # Check if audio is being marked as unsuitable
+        is_unsuitable = transcription_data.is_audio_suitable is False
+        
+        if is_unsuitable:
+            # Update the Audio table for unsuitable audio
+            try:
+                # Fetch the audio record
+                result = await db.execute(
+                    select(Audio).where(Audio.audio_id == transcription_data.audio_id)
+                )
+                audio_record = result.scalar_one_or_none()
+                
+                if audio_record:
+                    # Store the original filename before updating
+                    original_filename = audio_record.audio_filename
+                    
+                    # Delete the audio file from Google Cloud Storage
+                    try:
+                        deletion_success = await gcs_service.delete_blob(original_filename)
+                        if deletion_success:
+                            logger.info(
+                                f"Successfully deleted audio file from GCS: {original_filename}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Audio file not found in GCS (may have been deleted already): {original_filename}"
+                            )
+                    except Exception as gcs_error:
+                        logger.error(
+                            f"Failed to delete audio file from GCS: {original_filename}. Error: {gcs_error}"
+                        )
+                        # Continue with database update even if GCS deletion fails
+                    
+                    # Update Audio table fields for unsuitable audio
+                    audio_record.audio_filename = "not_suitable"
+                    audio_record.google_transcription = "Audio not suitable for transcription"
+                    audio_record.start_time = None
+                    audio_record.end_time = None
+                    audio_record.padded_duration = None
+                    audio_record.created_at = None
+                    
+                    logger.info(
+                        f"Marked audio {transcription_data.audio_id} as not_suitable "
+                        f"and cleared metadata fields"
+                    )
+            except Exception as e:
+                logger.error(f"Error updating audio record for unsuitable audio: {e}")
+                await db.rollback()
+                raise
+            
+            # Create transcription with nullified fields for unsuitable audio
+            new_transcription = Transcriptions(
+                audio_id=transcription_data.audio_id,
+                transcription=transcription_data.transcription,
+                speaker_gender=None,
+                has_noise=None,
+                is_code_mixed=None,
+                is_speaker_overlappings_exist=None,
+                is_audio_suitable=False,
+                admin=None,
+                validated_at=None,
+                created_at=None
+            )
+        else:
+            # Create normal transcription with all metadata
+            new_transcription = Transcriptions(
+                audio_id=transcription_data.audio_id,
+                transcription=transcription_data.transcription,
+                speaker_gender=transcription_data.speaker_gender,
+                has_noise=transcription_data.has_noise,
+                is_code_mixed=transcription_data.is_code_mixed,
+                is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
+                is_audio_suitable=transcription_data.is_audio_suitable,
+                admin=transcription_data.admin,
+                validated_at=transcription_data.validated_at
+            )
 
         db.add(new_transcription)
         await db.commit()
         
-        logger.info(
-            f"Created new transcription: {new_transcription.trans_id} "
-            f"for audio: {transcription_data.audio_id} "
-            f"(validated_at: {transcription_data.validated_at}, admin: {transcription_data.admin}) "
-            f"(transcription_count updated by trigger)"
-        )
+        if is_unsuitable:
+            logger.info(
+                f"Created unsuitable transcription: {new_transcription.trans_id} "
+                f"for audio: {transcription_data.audio_id} "
+                f"(all metadata fields nullified)"
+            )
+        else:
+            logger.info(
+                f"Created new transcription: {new_transcription.trans_id} "
+                f"for audio: {transcription_data.audio_id} "
+                f"(validated_at: {transcription_data.validated_at}, admin: {transcription_data.admin}) "
+                f"(transcription_count updated by trigger)"
+            )
         return new_transcription
 
     @staticmethod

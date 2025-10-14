@@ -191,3 +191,26 @@ class AudioComparisonResponse(BaseModel):
         ..., description="Audio files that exist only in database"
     )
     matched_files_count: int = Field(..., description="Number of files that exist in both cloud and DB")
+
+
+class BulkDeleteRequest(BaseModel):
+    """
+    Request model for bulk deleting audio files from GCS bucket.
+    """
+    filenames: List[str] = Field(
+        ..., 
+        min_length=1,
+        description="List of audio filenames to delete from GCS bucket",
+        examples=[["14Ykn2QXnQ0-001.wav", "14Ykn2QXnQ0-011.wav"]]
+    )
+
+
+class BulkDeleteResponse(BaseModel):
+    """
+    Response model for bulk delete operation.
+    """
+    summary: dict = Field(..., description="Summary of deletion results")
+    successful: List[str] = Field(..., description="List of successfully deleted filenames")
+    not_found: List[str] = Field(..., description="List of filenames not found in bucket")
+    failed: List[dict] = Field(..., description="List of failed deletions with error details")
+

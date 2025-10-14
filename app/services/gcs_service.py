@@ -87,6 +87,92 @@ class GCSService:
             logger.error(f"Unexpected error when generating signed URL: {e}")
             raise
     
+    async def delete_blob(self, blob_name: str) -> bool:
+        """
+        Delete a blob from the GCS bucket.
+        
+        Args:
+            blob_name: Name/path of the blob in GCS to delete
+            
+        Returns:
+            True if successfully deleted, False if blob not found
+            
+        Raises:
+            GoogleCloudError: If there's an error deleting the blob
+        """
+        try:
+            blob = self.bucket.blob(blob_name)
+            blob.delete()
+            logger.info(f"Successfully deleted blob from GCS: {blob_name}")
+            return True
+            
+        except NotFound:
+            logger.warning(f"Blob not found for deletion: {blob_name}")
+            return False
+        except GoogleCloudError as e:
+            logger.error(f"GCS error when deleting blob '{blob_name}': {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error when deleting blob '{blob_name}': {e}")
+            raise
+    
+    async def bulk_delete_blobs(self, blob_names: List[str]) -> dict:
+        """
+        Delete multiple blobs from the GCS bucket.
+        
+        Args:
+            blob_names: List of blob names/paths to delete
+            
+        Returns:
+            Dictionary with deletion results:
+            - successful: list of successfully deleted filenames
+            - not_found: list of filenames not found in bucket
+            - failed: list of tuples (filename, error_message) for failed deletions
+            - summary: dict with counts
+        """
+        results = {
+            'successful': [],
+            'not_found': [],
+            'failed': [],
+        }
+        
+        for blob_name in blob_names:
+            try:
+                blob = self.bucket.blob(blob_name)
+                blob.delete()
+                results['successful'].append(blob_name)
+                logger.info(f"Successfully deleted blob from GCS: {blob_name}")
+                
+            except NotFound:
+                results['not_found'].append(blob_name)
+                logger.warning(f"Blob not found for deletion: {blob_name}")
+                
+            except GoogleCloudError as e:
+                error_msg = str(e)
+                results['failed'].append((blob_name, error_msg))
+                logger.error(f"GCS error when deleting blob '{blob_name}': {e}")
+                
+            except Exception as e:
+                error_msg = str(e)
+                results['failed'].append((blob_name, error_msg))
+                logger.error(f"Unexpected error when deleting blob '{blob_name}': {e}")
+        
+        # Add summary
+        results['summary'] = {
+            'total_requested': len(blob_names),
+            'successful_count': len(results['successful']),
+            'not_found_count': len(results['not_found']),
+            'failed_count': len(results['failed'])
+        }
+        
+        logger.info(
+            f"Bulk deletion completed: {results['summary']['successful_count']}/{len(blob_names)} successful, "
+            f"{results['summary']['not_found_count']} not found, "
+            f"{results['summary']['failed_count']} failed"
+        )
+        
+        return results
+    
     async def get_blob_metadata(self, blob_name: str) -> Optional[dict]:
         """
         Get metadata for a specific blob.
