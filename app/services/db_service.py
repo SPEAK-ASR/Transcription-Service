@@ -358,6 +358,7 @@ class TranscriptionService:
             )
         else:
             # Create normal transcription with all metadata
+            # Note: created_at is not set here, so the database default (NOW()) will be used
             new_transcription = Transcriptions(
                 audio_id=transcription_data.audio_id,
                 transcription=transcription_data.transcription,

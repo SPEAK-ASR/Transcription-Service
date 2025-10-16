@@ -112,7 +112,7 @@ class Transcriptions(Base):
     validated_at = Column(DateTime(timezone=True), nullable=True, index=True)
     
     # Audit trail (nullable for unsuitable audio)
-    created_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True, index=True)
     
     # Relationships
     audio = relationship("Audio", back_populates="transcriptions")
