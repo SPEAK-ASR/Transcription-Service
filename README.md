@@ -103,21 +103,24 @@ transcription_service/
 
 ## 🚀 Quick Start
 
-### 1. Environment Setup
+### 1. Installation
+
+Run the installation script to set up the environment and install dependencies:
 
 ```bash
-# Create virtual environment
-python -m venv .venv
+# Make the script executable (first time only)
+chmod +x install.sh
 
-# Activate virtual environment
-# Windows
-.venv\Scripts\activate
-# macOS/Linux
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Run installation
+./install.sh
 ```
+
+This script will:
+- Check for required prerequisites (Python 3, pip)
+- Create a virtual environment
+- Install all Python dependencies
+- Set up the log directory
+- Create `.env` from `.env.example` if needed
 
 ### 2. Configuration
 
@@ -153,17 +156,22 @@ Ensure your PostgreSQL database has the required tables. The application uses SQ
 ### 5. Run the Application
 
 ```bash
-# Development server with auto-reload
-python run_server.py
+# Make the script executable (first time only)
+chmod +x start.sh
 
-# Or using uvicorn directly
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Start the service
+./start.sh
 ```
 
-The application will be available at:
-- **Web Interface**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **ReDoc Documentation**: http://localhost:8000/redoc
+The service will start with auto-reload enabled and will be available at:
+- **Web Interface**: http://localhost:5000
+- **API Documentation**: http://localhost:5000/docs
+- **ReDoc Documentation**: http://localhost:5000/redoc
+- **Health Check**: http://localhost:5000/health
+
+Press `Ctrl+C` to stop the service.
+
+**Note:** Logs are automatically saved to `logs/server.log`
 
 ## 📚 API Reference
 
