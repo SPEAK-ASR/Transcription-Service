@@ -420,7 +420,8 @@ class TranscriptionService:
                        a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
                 JOIN "Audio" a ON t.audio_id = a.audio_id
-                WHERE t.validated_at IS NULL
+                WHERE t.is_audio_suitable = TRUE
+                AND t.validated_at IS NULL
                 AND (a.leased_until IS NULL OR a.leased_until < NOW())
                 ORDER BY t.created_at ASC
                 LIMIT 5
@@ -491,11 +492,15 @@ class TranscriptionService:
     ) -> dict:
         """Return counts of pending and completed validations."""
         try:
-            total_stmt = select(func.count()).select_from(Transcriptions)
+            total_stmt = (
+                select(func.count())
+                .select_from(Transcriptions)
+                .where(Transcriptions.is_audio_suitable.is_(True))
+            )
             pending_stmt = (
                 select(func.count())
                 .select_from(Transcriptions)
-                .where(Transcriptions.validated_at.is_(None))
+                .where(Transcriptions.validated_at.is_(None) & Transcriptions.is_audio_suitable.is_(True))
             )
 
             total_result = await db.execute(total_stmt)

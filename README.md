@@ -1,12 +1,12 @@
 # Sinhala ASR Dataset Collection Service
 
-A comprehensive FastAPI service for collecting and managing Sinhala Automatic Speech Recognition (ASR) transcription data. The service provides a web interface for annotators to transcribe audio files with quality metadata, while ensuring data integrity through lease-based concurrency control.
+A comprehensive FastAPI service for collecting and managing Sinhala Automatic Speech Recognition (ASR) transcription data. The service now exposes a pure REST API that is consumed by the SPEAK-Client single-page application, while ensuring data integrity through lease-based concurrency control.
 
 ## 🎯 Overview
 
 This service facilitates the creation of high-quality Sinhala ASR datasets by:
 - Serving audio files from Google Cloud Storage with secure signed URLs
-- Collecting human transcriptions with comprehensive quality metadata
+- Collecting human transcriptions with comprehensive quality metadata through public APIs
 - Preventing race conditions through database-level lease management
 - Prioritizing audio files with fewer existing transcriptions
 - Supporting bulk audio metadata import via CSV files
@@ -25,11 +25,11 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 - **Quality Control**: Built-in validation and data integrity checks
 - **Progress Tracking**: Real-time transcription count updates
 
-### Web Interface
-- **Responsive Design**: Modern, mobile-friendly transcription interface
-- **Audio Player**: Custom HTML5 player with speed controls and replay functionality
-- **Sinhala Input**: Built-in phonetic keyboard for users without Sinhala keyboards
-- **Real-time Feedback**: Instant submission status and error handling
+### API-First Client Experience
+- **Decoupled UI**: The React-based SPEAK-Client consumes these APIs to deliver the transcription and validation workflows
+- **Audio Utilities**: Clients can build custom players using the secure signed URLs issued by the service
+- **Sinhala Input**: The Sinhala phonetic IME is now shipped with the client application while keeping the backend logic untouched
+- **Real-time Feedback**: Clients receive structured success/error responses for rich UX
 
 ### Developer Experience
 - **Async Architecture**: Full async/await support with SQLAlchemy and asyncpg
@@ -40,13 +40,13 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web Browser   │────│   FastAPI App    │────│   PostgreSQL    │
-│                 │    │                  │    │    Database     │
-│ - HTML/CSS/JS   │    │ - REST API       │    │                 │
-│ - Audio Player  │    │ - Web Routes     │    │ - Audio Records │
-│ - Form Handling │    │ - Validation     │    │ - Transcriptions│
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌──────────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ SPEAK-Client (React) │────│   FastAPI App    │────│   PostgreSQL    │
+│                      │    │                  │    │    Database     │
+│ - Transcription UI   │    │ - REST API       │    │                 │
+│ - Sinhala IME        │    │ - Validation     │    │ - Audio Records │
+│ - Admin tooling      │    │ - Admin metrics  │    │ - Transcriptions│
+└──────────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
                                 │
                        ┌──────────────────┐
@@ -87,15 +87,16 @@ transcription_service/
 │   │   ├── api.py                  # API router configuration
 │   │   └── endpoints/
 │   │       ├── audio.py            # Audio-related endpoints
-│   │       └── transcription.py    # Transcription endpoints
-│   └── web/
-│       └── routes.py               # Web UI routes
+│   │       ├── transcription.py    # Transcription submission endpoints
+│   │       ├── validation.py       # Validation workflow endpoints
+│   │       └── admin.py            # Admin leaderboard APIs
+│   └── web/ (legacy SSR, no longer mounted)
+│       └── routes.py               # Archived templates/routes for reference only
 ├── static/
-│   ├── script.js                   # Frontend JavaScript
-│   ├── sin-phonetic-ime.js         # Sinhala phonetic keyboard
-│   └── style.css                   # Responsive CSS styles
-├── templates/
-│   └── transcription.html          # Main transcription interface
+│   ├── script.js                   # Legacy frontend JavaScript (deprecated)
+│   ├── sin-phonetic-ime.js         # Sinhala phonetic keyboard (now consumed by SPEAK-Client)
+│   └── style.css                   # Legacy CSS for reference
+├── templates/ (legacy SSR templates, no longer served)
 ├── requirements.txt                # Python dependencies
 ├── run_server.py                   # Development server launcher
 └── README.md                       # This file
@@ -164,10 +165,12 @@ chmod +x start.sh
 ```
 
 The service will start with auto-reload enabled and will be available at:
-- **Web Interface**: http://localhost:5000
+- **REST API Base**: http://localhost:5000/api/v1
 - **API Documentation**: http://localhost:5000/docs
 - **ReDoc Documentation**: http://localhost:5000/redoc
 - **Health Check**: http://localhost:5000/health
+
+> The browser UI now lives inside the separate SPEAK-Client project. Point its `VITE_TRANSCRIPTION_API_URL` to the base above.
 
 Press `Ctrl+C` to stop the service.
 
@@ -241,6 +244,27 @@ Content-Type: application/json
 }
 ```
 
+### Admin Endpoints
+
+#### Admin Leaderboard
+```http
+GET /api/v1/admin/leaderboard?range=all|week|month
+```
+Aggregates validated transcription counts per admin. Useful for surfacing productivity stats in the SPEAK-Client admin modal.
+
+**Response:**
+```json
+{
+  "success": true,
+  "range": "week",
+  "total": 42,
+  "leaders": [
+    { "admin": "chirath", "count": 20 },
+    { "admin": "rusira", "count": 12 }
+  ]
+}
+```
+
 ## 🔧 Configuration Options
 
 | Variable | Type | Default | Description |
@@ -288,25 +312,15 @@ The service uses a sophisticated lease-based system to prevent race conditions:
 3. **Priority System**: Prioritizes audio files with fewer existing transcriptions
 4. **Automatic Cleanup**: Completed transcriptions automatically release leases
 
-## 🌐 Web Interface Features
+## 🌐 Client Application (SPEAK-Client)
 
-### Audio Player
-- Custom HTML5 audio player with full controls
-- Variable playback speed (0.5x to 1.5x)
-- Replay and seek functionality
-- Volume control with mute option
+The React SPA housed in `SPEAK-Client/` is responsible for the modern transcription, validation, and leaderboard experience. It consumes the APIs documented above and reuses the legacy Sinhala phonetic IME without modifying its carefully crafted logic.
 
-### Sinhala Input Support
-- Built-in phonetic keyboard for Sinhala input
-- Quick language switching (Ctrl+Space)
-- Visual language indicator
-
-### Quality Metadata Collection
-- Speaker gender identification
-- Background noise detection
-- Code-mixing (multiple languages) flagging
-- Overlapping speaker detection
-- Audio suitability assessment
+Key UI capabilities now live in the client:
+- Custom audio player with playback controls, seek shortcuts, and auto-replay
+- Sinhala phonetic keyboard, admin hotkey (`Ctrl + \\``), and reference transcription tools
+- Full transcription and validation forms with metadata capture and audio-suitability workflows
+- Floating admin leaderboard modal plus a dedicated /leaderboard page fed by `/api/v1/admin/leaderboard`
 
 ## 🚀 Deployment
 
