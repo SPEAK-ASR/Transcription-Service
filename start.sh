@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Sinhala ASR Dataset Collection Service - Startup Script
-# This script starts the transcription service
+# Sinhala ASR Transcription Service - Startup Script
+# This script starts the backend API service
 
 set -e
 
@@ -16,7 +16,8 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Sinhala ASR Service Startup${NC}"
+echo -e "${BLUE}  Transcription Service Startup${NC}"
+echo -e "${BLUE}  (Backend API)${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
 # Check if virtual environment exists
@@ -52,19 +53,22 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Start the server
-echo -e "\n${BLUE}Starting FastAPI server...${NC}"
+echo -e "\n${BLUE}Starting backend API server...${NC}"
 cd "$SCRIPT_DIR"
 source .venv/bin/activate
 
-echo -e "${GREEN}✓ Service started${NC}\n"
+echo -e "${GREEN}✓ Backend API service started${NC}\n"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Service Information${NC}"
+echo -e "${BLUE}  Backend API Service${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${GREEN}Main Interface:${NC}         http://localhost:5000"
+echo -e "${GREEN}API Base URL:${NC}           http://localhost:5000/api/v1"
 echo -e "${GREEN}API Documentation:${NC}      http://localhost:5000/docs"
-echo -e "${GREEN}API ReDoc:${NC}              http://localhost:5000/redoc"
+echo -e "${GREEN}ReDoc:${NC}                  http://localhost:5000/redoc"
 echo -e "${GREEN}Health Check:${NC}           http://localhost:5000/health"
 echo -e "${GREEN}Server logs:${NC}            $LOG_DIR/server.log"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${YELLOW}Note: This is a backend-only service.${NC}"
+echo -e "${YELLOW}Frontend UI is provided by SPEAK-Client.${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo -e "\n${YELLOW}Press Ctrl+C to stop the service${NC}\n"
 
