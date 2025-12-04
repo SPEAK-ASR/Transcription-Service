@@ -413,16 +413,17 @@ class TranscriptionService:
         try:
             # Use raw SQL query to properly handle lease expiration with NOW()
             query = text("""
-                SELECT t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
-                       t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
-                       t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
-                       a.audio_id, a.audio_filename, a.google_transcription, 
-                       a.transcription_count, a.leased_until
+                SELECT 
+                    t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
+                    t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
+                    t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
+                    a.audio_id, a.audio_filename, a.google_transcription, 
+                    a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
                 JOIN "Audio" a ON t.audio_id = a.audio_id
                 WHERE t.is_audio_suitable = TRUE
-                AND t.validated_at IS NULL
-                AND (a.leased_until IS NULL OR a.leased_until < NOW())
+                    AND t.validated_at IS NULL
+                    AND (a.leased_until IS NULL OR a.leased_until < NOW())
                 ORDER BY t.created_at ASC
                 LIMIT 5
                 FOR UPDATE OF t, a SKIP LOCKED
@@ -521,7 +522,14 @@ class TranscriptionService:
         trans_id: UUID,
         update_data: TranscriptionValidationUpdate
     ) -> Transcriptions:
-        """Update transcription fields and mark the record as validated."""
+        """
+        Update transcription fields and mark the record as validated.
+        
+        If audio is marked as unsuitable (is_audio_suitable=False), this method will:
+        1. Update the Audio table to mark it as "not_suitable" and clear metadata
+        2. Delete the audio file from Google Cloud Storage
+        3. Update the Transcriptions entry with nullified fields
+        """
         try:
             result = await db.execute(
                 select(Transcriptions).where(Transcriptions.trans_id == trans_id)
@@ -530,19 +538,84 @@ class TranscriptionService:
             if not transcription:
                 raise ValueError(f"Transcription not found: {trans_id}")
 
-            transcription_text = (update_data.transcription or '').strip()
-            transcription.transcription = transcription_text
-            transcription.speaker_gender = update_data.speaker_gender
-            transcription.has_noise = update_data.has_noise
-            transcription.is_code_mixed = update_data.is_code_mixed
-            transcription.is_speaker_overlappings_exist = update_data.is_speaker_overlappings_exist
-            transcription.is_audio_suitable = (
-                update_data.is_audio_suitable
-                if update_data.is_audio_suitable is not None
-                else transcription.is_audio_suitable
-            )
-            # Keep the original admin value unchanged during validation
-            transcription.validated_at = datetime.now(timezone.utc)
+            # Check if audio is being marked as unsuitable
+            is_unsuitable = update_data.is_audio_suitable is False
+            
+            if is_unsuitable:
+                # Fetch the audio record
+                audio_result = await db.execute(
+                    select(Audio).where(Audio.audio_id == transcription.audio_id)
+                )
+                audio_record = audio_result.scalar_one_or_none()
+                
+                if audio_record:
+                    # Store the original filename before updating
+                    original_filename = audio_record.audio_filename
+                    
+                    # Delete the audio file from Google Cloud Storage
+                    try:
+                        deletion_success = await gcs_service.delete_blob(original_filename)
+                        if deletion_success:
+                            logger.info(
+                                f"Successfully deleted audio file from GCS during validation: {original_filename}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Audio file not found in GCS during validation (may have been deleted already): {original_filename}"
+                            )
+                    except Exception as gcs_error:
+                        logger.error(
+                            f"Failed to delete audio file from GCS during validation: {original_filename}. Error: {gcs_error}"
+                        )
+                        # Continue with database update even if GCS deletion fails
+                    
+                    # Update Audio table fields for unsuitable audio
+                    audio_record.audio_filename = "not_suitable"
+                    audio_record.google_transcription = "Audio not suitable for transcription"
+                    audio_record.start_time = None
+                    audio_record.end_time = None
+                    audio_record.padded_duration = None
+                    audio_record.created_at = None
+                    
+                    logger.info(
+                        f"Marked audio {transcription.audio_id} as not_suitable during validation "
+                        f"and cleared metadata fields"
+                    )
+                
+                # Update transcription with nullified fields for unsuitable audio
+                transcription.transcription = update_data.transcription or "Audio not suitable for transcription"
+                transcription.speaker_gender = None
+                transcription.has_noise = None
+                transcription.is_code_mixed = None
+                transcription.is_speaker_overlappings_exist = None
+                transcription.is_audio_suitable = False
+                transcription.validated_at = None
+                transcription.created_at = None
+                
+                logger.info(
+                    f"Marked transcription {trans_id} as unsuitable during validation "
+                    f"(all metadata fields nullified)"
+                )
+            else:
+                # Normal validation - update all fields
+                transcription_text = (update_data.transcription or '').strip()
+                transcription.transcription = transcription_text
+                transcription.speaker_gender = update_data.speaker_gender
+                transcription.has_noise = update_data.has_noise
+                transcription.is_code_mixed = update_data.is_code_mixed
+                transcription.is_speaker_overlappings_exist = update_data.is_speaker_overlappings_exist
+                transcription.is_audio_suitable = (
+                    update_data.is_audio_suitable
+                    if update_data.is_audio_suitable is not None
+                    else transcription.is_audio_suitable
+                )
+                # Keep the original admin value unchanged during validation
+                transcription.validated_at = datetime.now(timezone.utc)
+                
+                logger.info(
+                    f"Validated transcription {trans_id} (audio {transcription.audio_id}) - "
+                    f"original admin: {transcription.admin or 'none'}"
+                )
 
             await db.commit()
             await db.refresh(transcription)
@@ -561,12 +634,6 @@ class TranscriptionService:
                     lease_error
                 )
 
-            logger.info(
-                "Validated transcription %s (audio %s) - original admin: %s",
-                transcription.trans_id,
-                transcription.audio_id,
-                transcription.admin or 'none'
-            )
             return transcription
         except ValueError:
             await db.rollback()
