@@ -65,14 +65,14 @@ class TranscriptionResponse(BaseModel):
     trans_id: UUID
     audio_id: UUID
     transcription: str
-    speaker_gender: SpeakerGender
-    has_noise: bool
-    is_code_mixed: bool
-    is_speaker_overlappings_exist: bool
+    speaker_gender: Optional[SpeakerGender]
+    has_noise: Optional[bool]
+    is_code_mixed: Optional[bool]
+    is_speaker_overlappings_exist: Optional[bool]
     is_audio_suitable: Optional[bool]
     admin: Optional[AdminName]
     validated_at: Optional[datetime]
-    created_at: datetime
+    created_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -213,4 +213,20 @@ class BulkDeleteResponse(BaseModel):
     successful: List[str] = Field(..., description="List of successfully deleted filenames")
     not_found: List[str] = Field(..., description="List of filenames not found in bucket")
     failed: List[dict] = Field(..., description="List of failed deletions with error details")
+
+
+class AdminLeaderboardEntry(BaseModel):
+    """Single leaderboard row for admin productivity."""
+
+    admin: str = Field(..., description="Admin identifier")
+    count: int = Field(..., description="Number of transcriptions attributed to the admin")
+
+
+class AdminLeaderboardResponse(BaseModel):
+    """Aggregated leaderboard response."""
+
+    success: bool = Field(default=True, description="Indicates whether the leaderboard query succeeded")
+    range: Literal["all", "week", "month"] = Field(..., description="Requested time range")
+    total: int = Field(..., description="Total transcription count for the returned admins")
+    leaders: List[AdminLeaderboardEntry] = Field(default_factory=list, description="Ranked admin rows")
 

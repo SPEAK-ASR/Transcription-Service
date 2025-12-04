@@ -8,7 +8,6 @@ speech recognition transcriptions.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
 
@@ -16,7 +15,6 @@ from app.core.config import settings
 from app.core.database import init_database, close_database
 from app.core.gcp_auth import gcp_auth_manager
 from app.api.v1.api import api_router
-from app.web.routes import router as web_router
 
 # Configure logging
 logging.basicConfig(
@@ -86,12 +84,6 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
-
-# Include web routes
-app.include_router(web_router)
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Sinhala ASR Dataset Collection Service - Installation Script
-# This script installs dependencies and prepares the environment
+# Sinhala ASR Transcription Service - Installation Script
+# This script installs dependencies and prepares the backend API environment
 
 set -e
 
@@ -16,7 +16,8 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Sinhala ASR Service Installation${NC}"
+echo -e "${BLUE}  Transcription Service Installation${NC}"
+echo -e "${BLUE}  (Backend API)${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
 # Function to check if a command exists

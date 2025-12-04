@@ -1,12 +1,12 @@
-# Sinhala ASR Dataset Collection Service
+# Sinhala ASR Transcription Service
 
-A comprehensive FastAPI service for collecting and managing Sinhala Automatic Speech Recognition (ASR) transcription data. The service provides a web interface for annotators to transcribe audio files with quality metadata, while ensuring data integrity through lease-based concurrency control.
+A backend API service built with FastAPI for managing Sinhala Automatic Speech Recognition (ASR) transcription data. This service provides a RESTful API consumed by the SPEAK-Client frontend application, ensuring data integrity through lease-based concurrency control and robust database management.
 
 ## 🎯 Overview
 
 This service facilitates the creation of high-quality Sinhala ASR datasets by:
 - Serving audio files from Google Cloud Storage with secure signed URLs
-- Collecting human transcriptions with comprehensive quality metadata
+- Collecting human transcriptions with comprehensive quality metadata through public APIs
 - Preventing race conditions through database-level lease management
 - Prioritizing audio files with fewer existing transcriptions
 - Supporting bulk audio metadata import via CSV files
@@ -25,11 +25,11 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 - **Quality Control**: Built-in validation and data integrity checks
 - **Progress Tracking**: Real-time transcription count updates
 
-### Web Interface
-- **Responsive Design**: Modern, mobile-friendly transcription interface
-- **Audio Player**: Custom HTML5 player with speed controls and replay functionality
-- **Sinhala Input**: Built-in phonetic keyboard for users without Sinhala keyboards
-- **Real-time Feedback**: Instant submission status and error handling
+### API-First Client Experience
+- **Decoupled UI**: The React-based SPEAK-Client consumes these APIs to deliver the transcription and validation workflows
+- **Audio Utilities**: Clients can build custom players using the secure signed URLs issued by the service
+- **Sinhala Input**: The Sinhala phonetic IME is now shipped with the client application while keeping the backend logic untouched
+- **Real-time Feedback**: Clients receive structured success/error responses for rich UX
 
 ### Developer Experience
 - **Async Architecture**: Full async/await support with SQLAlchemy and asyncpg
@@ -40,13 +40,14 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web Browser   │────│   FastAPI App    │────│   PostgreSQL    │
-│                 │    │                  │    │    Database     │
-│ - HTML/CSS/JS   │    │ - REST API       │    │                 │
-│ - Audio Player  │    │ - Web Routes     │    │ - Audio Records │
-│ - Form Handling │    │ - Validation     │    │ - Transcriptions│
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌──────────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ SPEAK-Client (React) │────│   FastAPI App    │────│   PostgreSQL    │
+│                      │    │  (Backend API)   │    │    Database     │
+│ - Transcription UI   │    │                  │    │                 │
+│ - Sinhala IME        │    │ - REST API       │    │ - Audio Records │
+│ - Admin tooling      │    │ - Validation     │    │ - Transcriptions│
+└──────────────────────┘    │ - Admin metrics  │    │ - Validations   │
+                            └──────────────────┘    └─────────────────┘
                                 │
                                 │
                        ┌──────────────────┐
@@ -60,16 +61,16 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 ```
 
 **Technology Stack:**
-- **Backend**: FastAPI with async support
+- **Backend**: FastAPI with async support (Python 3.8+)
 - **Database**: PostgreSQL with async SQLAlchemy and asyncpg driver
 - **Storage**: Google Cloud Storage for audio file hosting
-- **Frontend**: HTML5, CSS3, JavaScript with custom audio player
 - **Authentication**: Google Cloud service account or ADC
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs
 
 ## 📁 Project Structure
 
 ```
-transcription_service/
+Transcription-Service/
 ├── app/
 │   ├── main.py                     # FastAPI application entry point
 │   ├── core/
@@ -83,21 +84,19 @@ transcription_service/
 │   ├── services/
 │   │   ├── db_service.py           # Database service layer
 │   │   └── gcs_service.py          # Google Cloud Storage service
-│   ├── api/v1/
-│   │   ├── api.py                  # API router configuration
-│   │   └── endpoints/
-│   │       ├── audio.py            # Audio-related endpoints
-│   │       └── transcription.py    # Transcription endpoints
-│   └── web/
-│       └── routes.py               # Web UI routes
-├── static/
-│   ├── script.js                   # Frontend JavaScript
-│   ├── sin-phonetic-ime.js         # Sinhala phonetic keyboard
-│   └── style.css                   # Responsive CSS styles
-├── templates/
-│   └── transcription.html          # Main transcription interface
+│   └── api/
+│       └── v1/
+│           ├── api.py              # API router configuration
+│           └── endpoints/
+│               ├── audio.py        # Audio-related endpoints
+│               ├── transcription.py # Transcription submission endpoints
+│               ├── validation.py   # Validation workflow endpoints
+│               └── admin.py        # Admin leaderboard APIs
+├── logs/                           # Application logs directory
 ├── requirements.txt                # Python dependencies
-├── run_server.py                   # Development server launcher
+├── install.sh                      # Installation script
+├── start.sh                        # Service startup script
+├── Dockerfile                      # Docker containerization
 └── README.md                       # This file
 ```
 
@@ -163,11 +162,13 @@ chmod +x start.sh
 ./start.sh
 ```
 
-The service will start with auto-reload enabled and will be available at:
-- **Web Interface**: http://localhost:5000
+The backend API service will start with auto-reload enabled and will be available at:
+- **REST API Base**: http://localhost:5000/api/v1
 - **API Documentation**: http://localhost:5000/docs
 - **ReDoc Documentation**: http://localhost:5000/redoc
 - **Health Check**: http://localhost:5000/health
+
+> **Note**: This is a backend-only service. The frontend UI is provided by the separate SPEAK-Client application. Configure the client to point to this API base URL.
 
 Press `Ctrl+C` to stop the service.
 
@@ -241,6 +242,27 @@ Content-Type: application/json
 }
 ```
 
+### Admin Endpoints
+
+#### Admin Leaderboard
+```http
+GET /api/v1/admin/leaderboard?range=all|week|month
+```
+Aggregates validated transcription counts per admin. Useful for surfacing productivity stats in the SPEAK-Client admin modal.
+
+**Response:**
+```json
+{
+  "success": true,
+  "range": "week",
+  "total": 42,
+  "leaders": [
+    { "admin": "chirath", "count": 20 },
+    { "admin": "rusira", "count": 12 }
+  ]
+}
+```
+
 ## 🔧 Configuration Options
 
 | Variable | Type | Default | Description |
@@ -288,25 +310,18 @@ The service uses a sophisticated lease-based system to prevent race conditions:
 3. **Priority System**: Prioritizes audio files with fewer existing transcriptions
 4. **Automatic Cleanup**: Completed transcriptions automatically release leases
 
-## 🌐 Web Interface Features
+## 🌐 Frontend Client
 
-### Audio Player
-- Custom HTML5 audio player with full controls
-- Variable playback speed (0.5x to 1.5x)
-- Replay and seek functionality
-- Volume control with mute option
+This service provides a backend API only. The user interface is provided by the **SPEAK-Client** React application, which is maintained separately.
 
-### Sinhala Input Support
-- Built-in phonetic keyboard for Sinhala input
-- Quick language switching (Ctrl+Space)
-- Visual language indicator
+The SPEAK-Client application:
+- Consumes all REST API endpoints provided by this service
+- Provides transcription and validation interfaces
+- Includes Sinhala phonetic keyboard input support
+- Displays admin leaderboards and statistics
+- Handles audio playback and user interactions
 
-### Quality Metadata Collection
-- Speaker gender identification
-- Background noise detection
-- Code-mixing (multiple languages) flagging
-- Overlapping speaker detection
-- Audio suitability assessment
+To connect the client to this backend, configure the client's API base URL to point to this service's endpoint (default: `http://localhost:5000/api/v1`).
 
 ## 🚀 Deployment
 

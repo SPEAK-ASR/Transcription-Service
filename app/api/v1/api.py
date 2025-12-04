@@ -7,7 +7,7 @@ for the Sinhala ASR Dataset Collection Service API v1.
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import audio, transcription, validation
+from app.api.v1.endpoints import audio, transcription, validation, admin
 
 # Create main API router
 api_router = APIRouter()
@@ -41,5 +41,14 @@ api_router.include_router(
     responses={
         500: {"description": "Internal server error"},
         404: {"description": "No items pending validation"}
+    }
+)
+
+api_router.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["Admin"],
+    responses={
+        500: {"description": "Internal server error"}
     }
 )
