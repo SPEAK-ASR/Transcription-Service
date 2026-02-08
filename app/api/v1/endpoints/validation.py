@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_database_session
-from app.services.db_service import TranscriptionService
+from app.services.db_service import TranscriptionService, YouTubeVideoService
 from app.services.gcs_service import gcs_service
 from app.schemas import (
     AudioResponse,
@@ -20,6 +20,10 @@ from app.schemas import (
     TranscriptionValidationUpdate,
     ValidationQueueItem,
     ValidationProgressResponse,
+    AudioClipForValidation,
+    YouTubeVideoWithAudioClips,
+    YouTubeVideoValidationStatusUpdate,
+    YouTubeVideoValidationResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,3 +133,108 @@ async def validate_transcription_item(
     except Exception as exc:
         logger.error("Error validating transcription %s: %s", transcription_id, exc)
         raise HTTPException(status_code=500, detail="Failed to validate transcription")
+
+
+@router.get(
+    "/youtube-video/next",
+    response_model=YouTubeVideoWithAudioClips,
+    summary="Get the next YouTube video awaiting validation with audio clips",
+    tags=["YouTube Video Validation"],
+)
+async def get_next_youtube_video_for_validation(
+    db: AsyncSession = Depends(get_async_database_session),
+) -> YouTubeVideoWithAudioClips:
+    """
+    Return the next unvalidated YouTube video with the highest audio clip count.
+    
+    Audio clip selection logic:
+    - Returns 10% of the video's total audio clips
+    - If 10% > 10, caps at 10 audio clips
+    - If 10% < 1, returns all existing audio clips
+    
+    Videos are ordered by audio_clip_count descending to prioritize videos with more clips.
+    """
+    try:
+        video_data = await YouTubeVideoService.get_next_youtube_video_for_validation(db)
+        
+        if not video_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No YouTube videos pending validation",
+            )
+        
+        # Generate signed URLs for each audio clip
+        audio_clips_with_urls = []
+        for clip in video_data['audio_clips']:
+            signed_url = await gcs_service.generate_signed_url(clip['audio_filename'])
+            audio_clips_with_urls.append(
+                AudioClipForValidation(
+                    audio_id=clip['audio_id'],
+                    audio_filename=clip['audio_filename'],
+                    google_transcription=clip['google_transcription'],
+                    gcs_signed_url=signed_url,
+                )
+            )
+        
+        return YouTubeVideoWithAudioClips(
+            id=video_data['id'],
+            video_id=video_data['video_id'],
+            title=video_data['title'],
+            description=video_data['description'],
+            duration=video_data['duration'],
+            uploader=video_data['uploader'],
+            upload_date=video_data['upload_date'],
+            thumbnail=video_data['thumbnail'],
+            url=video_data['url'],
+            domain=video_data['domain'],
+            is_validated=video_data['is_validated'],
+            created_at=video_data['created_at'],
+            audio_clip_count=video_data['audio_clip_count'],
+            audio_clips=audio_clips_with_urls,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error fetching YouTube video for validation: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to load YouTube video for validation")
+
+
+@router.post(
+    "/youtube-video/{video_id}/validation-status",
+    response_model=YouTubeVideoValidationResponse,
+    summary="Update YouTube video validation status",
+    tags=["YouTube Video Validation"],
+)
+async def update_youtube_video_validation_status(
+    video_id: UUID,
+    payload: YouTubeVideoValidationStatusUpdate,
+    db: AsyncSession = Depends(get_async_database_session),
+) -> YouTubeVideoValidationResponse:
+    """
+    Update the is_validated status of a YouTube video.
+    
+    Set is_validated to True to mark as validated, or False to mark as invalid.
+    """
+    try:
+        result = await YouTubeVideoService.update_youtube_video_validation_status(
+            db, video_id, payload.is_validated
+        )
+        
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"YouTube video with id {video_id} not found",
+            )
+        
+        status_text = "validated" if result['is_validated'] else "marked as invalid"
+        return YouTubeVideoValidationResponse(
+            id=result['id'],
+            video_id=result['video_id'],
+            is_validated=result['is_validated'],
+            message=f"YouTube video successfully {status_text}",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error updating YouTube video validation status: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to update validation status")

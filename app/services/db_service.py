@@ -642,3 +642,164 @@ class TranscriptionService:
             await db.rollback()
             logger.error(f"Error validating transcription {trans_id}: {e}")
             raise
+
+
+class YouTubeVideoService:
+    """Service for YouTube video validation operations."""
+
+    @staticmethod
+    async def get_next_youtube_video_for_validation(db: AsyncSession) -> Optional[dict]:
+        """
+        Get the next unvalidated YouTube video with highest audio clip count.
+        
+        Uses the youtube_video_with_audio_count view to fetch videos ordered by
+        audio_clip_count descending, filtering for unvalidated videos.
+        
+        Audio clip limit logic:
+        - Calculate 10% of total audio clips
+        - If 10% > 10, limit to 10 audio clips
+        - If 10% < 1, return all existing audio clips
+        - Otherwise, return 10% of audio clips (rounded)
+        
+        Returns:
+            dict with video data and audio clips, or None if no videos available
+        """
+        try:
+            # Query the view to get the next unvalidated video with most audio clips
+            video_query = text("""
+                SELECT id, video_id, title, description, duration, uploader, 
+                       upload_date, thumbnail, url, domain, is_validated, 
+                       created_at, audio_clip_count
+                FROM youtube_video_with_audio_count
+                WHERE is_validated IS NULL
+                ORDER BY audio_clip_count DESC
+                LIMIT 1;
+            """)
+            
+            result = await db.execute(video_query)
+            video_row = result.fetchone()
+            
+            if not video_row:
+                logger.info("No YouTube videos available for validation")
+                return None
+            
+            video_data = {
+                'id': video_row[0],
+                'video_id': video_row[1],
+                'title': video_row[2],
+                'description': video_row[3],
+                'duration': video_row[4],
+                'uploader': video_row[5],
+                'upload_date': video_row[6],
+                'thumbnail': video_row[7],
+                'url': video_row[8],
+                'domain': video_row[9],
+                'is_validated': video_row[10],
+                'created_at': video_row[11],
+                'audio_clip_count': video_row[12],
+                'audio_clips': []
+            }
+            
+            # Calculate audio limit based on 10% rule
+            total_audio_count = video_data['audio_clip_count']
+            
+            if total_audio_count <= 10:
+                # If total is 10 or less, return all existing audios
+                audio_limit = total_audio_count
+            else:
+                ten_percent = total_audio_count * 0.10
+                if ten_percent > 10:
+                    # If 10% is more than 10, cap at 10
+                    audio_limit = 10
+                else:
+                    # Otherwise, use 10% (rounded to nearest integer, minimum 1)
+                    audio_limit = max(1, round(ten_percent))
+            
+            logger.info(
+                f"Video {video_data['video_id']}: total={total_audio_count}, "
+                f"10%={ten_percent:.1f}, fetching={audio_limit} audio clips"
+            )
+            
+            # Fetch audio clips for this video with calculated limit
+            audio_query = text("""
+                SELECT audio_id, audio_filename, google_transcription
+                FROM "Audio"
+                WHERE youtube_video_id = :video_id
+                LIMIT :limit;
+            """)
+            
+            audio_result = await db.execute(audio_query, {
+                "video_id": video_data['id'],
+                "limit": audio_limit
+            })
+            audio_rows = audio_result.fetchall()
+            
+            video_data['audio_clips'] = [
+                {
+                    'audio_id': row[0],
+                    'audio_filename': row[1],
+                    'google_transcription': row[2]
+                }
+                for row in audio_rows
+            ]
+            
+            logger.info(
+                f"Retrieved YouTube video {video_data['video_id']} with "
+                f"{len(video_data['audio_clips'])} audio clips for validation"
+            )
+            
+            return video_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching YouTube video for validation: {e}")
+            raise
+
+    @staticmethod
+    async def update_youtube_video_validation_status(
+        db: AsyncSession, 
+        video_id: UUID, 
+        is_validated: bool
+    ) -> Optional[dict]:
+        """
+        Update the validation status of a YouTube video.
+        
+        Args:
+            db: Database session
+            video_id: UUID of the YouTube video
+            is_validated: True if validated, False if marked as invalid
+            
+        Returns:
+            dict with updated video info, or None if video not found
+        """
+        try:
+            query = text("""
+                UPDATE "YouTube_Video"
+                SET is_validated = :is_validated
+                WHERE id = :video_id
+                RETURNING id, video_id, is_validated;
+            """)
+            
+            result = await db.execute(query, {
+                "video_id": video_id,
+                "is_validated": is_validated
+            })
+            row = result.fetchone()
+            
+            if row:
+                await db.commit()
+                status_text = "validated" if is_validated else "invalidated"
+                logger.info(f"YouTube video {row[1]} marked as {status_text}")
+                return {
+                    'id': row[0],
+                    'video_id': row[1],
+                    'is_validated': row[2]
+                }
+            
+            await db.rollback()
+            logger.warning(f"YouTube video with id {video_id} not found")
+            return None
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error updating YouTube video validation status: {e}")
+            raise
