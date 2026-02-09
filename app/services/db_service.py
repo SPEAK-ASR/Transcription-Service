@@ -666,13 +666,12 @@ class YouTubeVideoService:
         """
         try:
             # Query the view to get the next unvalidated video with most audio clips
+            # Note: View already filters for is_validated IS NULL and no transcribed audios
             video_query = text("""
                 SELECT id, video_id, title, description, duration, uploader, 
                        upload_date, thumbnail, url, domain, is_validated, 
                        created_at, audio_clip_count
                 FROM youtube_video_with_audio_count
-                WHERE is_validated IS NULL
-                ORDER BY audio_clip_count DESC
                 LIMIT 1;
             """)
             
