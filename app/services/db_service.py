@@ -23,6 +23,13 @@ from app.services.gcs_service import gcs_service
 logger = logging.getLogger(__name__)
 
 
+def _normalize_reference_text(value: Optional[str]) -> str:
+    """Collapse whitespace for comparing ASR reference strings."""
+    if not value or not str(value).strip():
+        return ""
+    return " ".join(str(value).strip().split())
+
+
 class AudioService:
     """Service for audio database operations."""
 
@@ -60,7 +67,7 @@ class AudioService:
                     FOR UPDATE SKIP LOCKED
                     LIMIT 1
                 )
-                RETURNING audio_id, audio_filename, google_transcription, transcription_count, leased_until;
+                RETURNING audio_id, audio_filename, google_transcription, speak_transcription, transcription_count, leased_until;
             """)
             
             result = await db.execute(query)
@@ -74,8 +81,9 @@ class AudioService:
                     'audio_id': audio_row[0],
                     'audio_filename': audio_row[1], 
                     'google_transcription': audio_row[2],
-                    'transcription_count': audio_row[3],
-                    'leased_until': audio_row[4]
+                    'speak_transcription': audio_row[3],
+                    'transcription_count': audio_row[4],
+                    'leased_until': audio_row[5]
                 }
                 
                 logger.info(f"Successfully claimed audio for transcription: {audio_data['audio_filename']} (lease until: {audio_data['leased_until']}, timeout: {settings.AUDIO_LEASE_TIMEOUT_MINUTES} minutes)")
@@ -86,6 +94,7 @@ class AudioService:
                         self.audio_id = data['audio_id']
                         self.audio_filename = data['audio_filename']
                         self.google_transcription = data['google_transcription']
+                        self.speak_transcription = data['speak_transcription']
                         self.transcription_count = data['transcription_count']
                         self.leased_until = data['leased_until']
                 
@@ -354,9 +363,25 @@ class TranscriptionService:
                 is_audio_suitable=False,
                 admin=None,
                 validated_at=None,
-                created_at=None
+                created_at=None,
+                is_best_google=None,
             )
         else:
+            # Resolve is_best_google; ignore spurious preference when both ASR refs are identical
+            audio_result = await db.execute(
+                select(Audio).where(Audio.audio_id == transcription_data.audio_id)
+            )
+            audio_for_row = audio_result.scalar_one_or_none()
+            is_best_google = transcription_data.is_best_google
+            if audio_for_row:
+                g_norm = _normalize_reference_text(audio_for_row.google_transcription)
+                s_norm = _normalize_reference_text(audio_for_row.speak_transcription)
+                if g_norm and s_norm and g_norm == s_norm and is_best_google is not None:
+                    logger.info(
+                        "Coercing is_best_google to NULL: Google and SPEAK references are identical"
+                    )
+                    is_best_google = None
+
             # Create normal transcription with all metadata
             # Note: created_at is not set here, so the database default (NOW()) will be used
             new_transcription = Transcriptions(
@@ -368,7 +393,8 @@ class TranscriptionService:
                 is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
                 is_audio_suitable=transcription_data.is_audio_suitable,
                 admin=transcription_data.admin,
-                validated_at=transcription_data.validated_at
+                validated_at=transcription_data.validated_at,
+                is_best_google=is_best_google,
             )
 
         db.add(new_transcription)
@@ -416,8 +442,8 @@ class TranscriptionService:
                 SELECT 
                     t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
                     t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
-                    t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
-                    a.audio_id, a.audio_filename, a.google_transcription, 
+                    t.is_audio_suitable, t.admin, t.validated_at, t.created_at, t.is_best_google,
+                    a.audio_id, a.audio_filename, a.google_transcription, a.speak_transcription,
                     a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
                 JOIN "Audio" a ON t.audio_id = a.audio_id
@@ -451,15 +477,17 @@ class TranscriptionService:
                         'is_audio_suitable': row[7],
                         'admin': row[8],
                         'validated_at': row[9],
-                        'created_at': row[10]
+                        'created_at': row[10],
+                        'is_best_google': row[11],
                     }
                     
                     audio_data = {
-                        'audio_id': row[11],
-                        'audio_filename': row[12],
-                        'google_transcription': row[13],
-                        'transcription_count': row[14],
-                        'leased_until': row[15]
+                        'audio_id': row[12],
+                        'audio_filename': row[13],
+                        'google_transcription': row[14],
+                        'speak_transcription': row[15],
+                        'transcription_count': row[16],
+                        'leased_until': row[17]
                     }
                     
                     # Create minimal objects for compatibility

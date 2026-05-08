@@ -69,6 +69,7 @@ async def get_random_audio_clip(
             audio_id=audio_file.audio_id,
             audio_filename=audio_file.audio_filename,
             google_transcription=audio_file.google_transcription,
+            speak_transcription=getattr(audio_file, "speak_transcription", None),
             transcription_count=audio_file.transcription_count,
             gcs_signed_url=signed_url
         )

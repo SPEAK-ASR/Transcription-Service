@@ -24,6 +24,7 @@ class AudioResponse(BaseModel):
     audio_id: UUID
     audio_filename: str
     google_transcription: Optional[str] = None
+    speak_transcription: Optional[str] = None
     transcription_count: int = 0
     gcs_signed_url: str  # Signed URL for direct access
     
@@ -43,6 +44,10 @@ class TranscriptionCreate(BaseModel):
     is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio is suitable for transcription")
     admin: Optional[AdminName] = Field(default=None, description="Admin attribution if submitted by an admin")
     validated_at: Optional[datetime] = Field(default=None, description="Timestamp when validated (set automatically for admin submissions)")
+    is_best_google: Optional[bool] = Field(
+        default=None,
+        description="True if user copied Google reference, False if SPEAK, null if manual or identical refs",
+    )
     
     @field_validator("transcription")
     @classmethod
@@ -73,6 +78,7 @@ class TranscriptionResponse(BaseModel):
     admin: Optional[AdminName]
     validated_at: Optional[datetime]
     created_at: Optional[datetime]
+    is_best_google: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 

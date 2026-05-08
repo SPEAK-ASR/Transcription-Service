@@ -39,6 +39,7 @@ class Audio(Base):
     audio_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     audio_filename = Column(Text, nullable=False, unique=True, index=True)
     google_transcription = Column(Text, nullable=True)
+    speak_transcription = Column(Text, nullable=True)
     transcription_count = Column(Integer, default=0, nullable=False, index=True)
     leased_until = Column(DateTime(timezone=True), nullable=True, index=True)
     start_time = Column(Time, nullable=True)
@@ -110,6 +111,9 @@ class Transcriptions(Base):
     
     # Validation timestamp - set when transcription is validated, null for unvalidated
     validated_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # True = user copied Google reference, False = copied SPEAK, NULL = manual / tie / no preference
+    is_best_google = Column(Boolean, nullable=True, index=True)
     
     # Audit trail (nullable for unsuitable audio)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True, index=True)

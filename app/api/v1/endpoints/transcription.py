@@ -78,7 +78,8 @@ async def create_transcription(
             is_audio_suitable=new_transcription.is_audio_suitable,
             admin=new_transcription.admin,
             validated_at=new_transcription.validated_at,
-            created_at=new_transcription.created_at
+            created_at=new_transcription.created_at,
+            is_best_google=getattr(new_transcription, "is_best_google", None),
         )
         
     except HTTPException:
