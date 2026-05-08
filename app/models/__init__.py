@@ -47,6 +47,7 @@ class Audio(Base):
     padded_duration = Column(Float, nullable=True)
     youtube_video_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    is_best_google = Column(Boolean, nullable=True, index=True)  # True if user copied Google ref, False if SPEAK
     
     # Relationships
     transcriptions = relationship("Transcriptions", back_populates="audio", cascade="all, delete-orphan")
@@ -111,9 +112,6 @@ class Transcriptions(Base):
     
     # Validation timestamp - set when transcription is validated, null for unvalidated
     validated_at = Column(DateTime(timezone=True), nullable=True, index=True)
-
-    # True = user copied Google reference, False = copied SPEAK, NULL = manual / tie / no preference
-    is_best_google = Column(Boolean, nullable=True, index=True)
     
     # Audit trail (nullable for unsuitable audio)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True, index=True)

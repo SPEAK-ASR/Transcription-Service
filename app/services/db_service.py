@@ -364,24 +364,8 @@ class TranscriptionService:
                 admin=None,
                 validated_at=None,
                 created_at=None,
-                is_best_google=None,
             )
         else:
-            # Resolve is_best_google; ignore spurious preference when both ASR refs are identical
-            audio_result = await db.execute(
-                select(Audio).where(Audio.audio_id == transcription_data.audio_id)
-            )
-            audio_for_row = audio_result.scalar_one_or_none()
-            is_best_google = transcription_data.is_best_google
-            if audio_for_row:
-                g_norm = _normalize_reference_text(audio_for_row.google_transcription)
-                s_norm = _normalize_reference_text(audio_for_row.speak_transcription)
-                if g_norm and s_norm and g_norm == s_norm and is_best_google is not None:
-                    logger.info(
-                        "Coercing is_best_google to NULL: Google and SPEAK references are identical"
-                    )
-                    is_best_google = None
-
             # Create normal transcription with all metadata
             # Note: created_at is not set here, so the database default (NOW()) will be used
             new_transcription = Transcriptions(
@@ -394,11 +378,39 @@ class TranscriptionService:
                 is_audio_suitable=transcription_data.is_audio_suitable,
                 admin=transcription_data.admin,
                 validated_at=transcription_data.validated_at,
-                is_best_google=is_best_google,
             )
 
         db.add(new_transcription)
         await db.commit()
+        
+        # Update Audio record's is_best_google if provided
+        if transcription_data.is_best_google is not None:
+            try:
+                audio_result = await db.execute(
+                    select(Audio).where(Audio.audio_id == transcription_data.audio_id)
+                )
+                audio_record = audio_result.scalar_one_or_none()
+                
+                if audio_record:
+                    # Resolve is_best_google; ignore spurious preference when both ASR refs are identical
+                    g_norm = _normalize_reference_text(audio_record.google_transcription)
+                    s_norm = _normalize_reference_text(audio_record.speak_transcription)
+                    
+                    is_best_google_value = transcription_data.is_best_google
+                    if g_norm and s_norm and g_norm == s_norm and is_best_google_value is not None:
+                        logger.info(
+                            "Coercing is_best_google to NULL: Google and SPEAK references are identical"
+                        )
+                        is_best_google_value = None
+                    
+                    audio_record.is_best_google = is_best_google_value
+                    await db.commit()
+                    logger.info(
+                        f"Updated Audio {transcription_data.audio_id} is_best_google to {is_best_google_value}"
+                    )
+            except Exception as e:
+                logger.error(f"Error updating is_best_google on Audio record: {e}")
+                # Don't fail the transcription creation if this update fails
         
         if is_unsuitable:
             logger.info(
@@ -442,7 +454,7 @@ class TranscriptionService:
                 SELECT 
                     t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
                     t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
-                    t.is_audio_suitable, t.admin, t.validated_at, t.created_at, t.is_best_google,
+                    t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
                     a.audio_id, a.audio_filename, a.google_transcription, a.speak_transcription,
                     a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
@@ -478,16 +490,15 @@ class TranscriptionService:
                         'admin': row[8],
                         'validated_at': row[9],
                         'created_at': row[10],
-                        'is_best_google': row[11],
                     }
                     
                     audio_data = {
-                        'audio_id': row[12],
-                        'audio_filename': row[13],
-                        'google_transcription': row[14],
-                        'speak_transcription': row[15],
-                        'transcription_count': row[16],
-                        'leased_until': row[17]
+                        'audio_id': row[11],
+                        'audio_filename': row[12],
+                        'google_transcription': row[13],
+                        'speak_transcription': row[14],
+                        'transcription_count': row[15],
+                        'leased_until': row[16]
                     }
                     
                     # Create minimal objects for compatibility

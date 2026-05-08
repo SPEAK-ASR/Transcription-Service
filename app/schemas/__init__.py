@@ -26,6 +26,7 @@ class AudioResponse(BaseModel):
     google_transcription: Optional[str] = None
     speak_transcription: Optional[str] = None
     transcription_count: int = 0
+    is_best_google: Optional[bool] = None
     gcs_signed_url: str  # Signed URL for direct access
     
     model_config = ConfigDict(from_attributes=True)
@@ -78,7 +79,6 @@ class TranscriptionResponse(BaseModel):
     admin: Optional[AdminName]
     validated_at: Optional[datetime]
     created_at: Optional[datetime]
-    is_best_google: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -72,7 +72,6 @@ async def get_next_validation_item(
             admin=transcription.admin,
             validated_at=transcription.validated_at,
             created_at=transcription.created_at,
-            is_best_google=getattr(transcription, "is_best_google", None),
         )
 
         return ValidationQueueItem(audio=audio_payload, transcription=transcription_payload)
@@ -126,7 +125,6 @@ async def validate_transcription_item(
             admin=updated.admin,
             validated_at=updated.validated_at,
             created_at=updated.created_at,
-            is_best_google=getattr(updated, "is_best_google", None),
         )
     except ValueError as exc:
         logger.warning("Validation target missing: %s", exc)
