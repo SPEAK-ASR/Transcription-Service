@@ -23,6 +23,13 @@ from app.services.gcs_service import gcs_service
 logger = logging.getLogger(__name__)
 
 
+def _normalize_reference_text(value: Optional[str]) -> str:
+    """Collapse whitespace for comparing ASR reference strings."""
+    if not value or not str(value).strip():
+        return ""
+    return " ".join(str(value).strip().split())
+
+
 class AudioService:
     """Service for audio database operations."""
 
@@ -60,7 +67,7 @@ class AudioService:
                     FOR UPDATE SKIP LOCKED
                     LIMIT 1
                 )
-                RETURNING audio_id, audio_filename, google_transcription, transcription_count, leased_until;
+                RETURNING audio_id, audio_filename, google_transcription, speak_transcription, transcription_count, leased_until;
             """)
             
             result = await db.execute(query)
@@ -74,8 +81,9 @@ class AudioService:
                     'audio_id': audio_row[0],
                     'audio_filename': audio_row[1], 
                     'google_transcription': audio_row[2],
-                    'transcription_count': audio_row[3],
-                    'leased_until': audio_row[4]
+                    'speak_transcription': audio_row[3],
+                    'transcription_count': audio_row[4],
+                    'leased_until': audio_row[5]
                 }
                 
                 logger.info(f"Successfully claimed audio for transcription: {audio_data['audio_filename']} (lease until: {audio_data['leased_until']}, timeout: {settings.AUDIO_LEASE_TIMEOUT_MINUTES} minutes)")
@@ -86,6 +94,7 @@ class AudioService:
                         self.audio_id = data['audio_id']
                         self.audio_filename = data['audio_filename']
                         self.google_transcription = data['google_transcription']
+                        self.speak_transcription = data['speak_transcription']
                         self.transcription_count = data['transcription_count']
                         self.leased_until = data['leased_until']
                 
@@ -354,7 +363,7 @@ class TranscriptionService:
                 is_audio_suitable=False,
                 admin=None,
                 validated_at=None,
-                created_at=None
+                created_at=None,
             )
         else:
             # Create normal transcription with all metadata
@@ -368,11 +377,41 @@ class TranscriptionService:
                 is_speaker_overlappings_exist=transcription_data.is_speaker_overlappings_exist,
                 is_audio_suitable=transcription_data.is_audio_suitable,
                 admin=transcription_data.admin,
-                validated_at=transcription_data.validated_at
+                validated_at=transcription_data.validated_at,
             )
 
         db.add(new_transcription)
         await db.commit()
+        
+        # Update Audio record's is_best_google if provided
+        if transcription_data.is_best_google is not None:
+            try:
+                audio_result = await db.execute(
+                    select(Audio).where(Audio.audio_id == transcription_data.audio_id)
+                )
+                audio_record = audio_result.scalar_one_or_none()
+                
+                if audio_record:
+                    # Resolve is_best_google; ignore spurious preference when both ASR refs are identical
+                    g_norm = _normalize_reference_text(audio_record.google_transcription)
+                    s_norm = _normalize_reference_text(audio_record.speak_transcription)
+                    
+                    is_best_google_value = transcription_data.is_best_google
+                    if g_norm and s_norm and g_norm == s_norm and is_best_google_value is not None:
+                        logger.info(
+                            "Coercing is_best_google to NULL: Google and SPEAK references are identical"
+                        )
+                        is_best_google_value = None
+                    
+                    audio_record.is_best_google = is_best_google_value
+                    await db.commit()
+                    logger.info(
+                        f"Updated Audio {transcription_data.audio_id} is_best_google to {is_best_google_value}"
+                    )
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Error updating is_best_google on Audio record: {e}")
+                # Don't fail the transcription creation if this update fails
         
         if is_unsuitable:
             logger.info(
@@ -417,7 +456,7 @@ class TranscriptionService:
                     t.trans_id, t.audio_id, t.transcription, t.speaker_gender, 
                     t.has_noise, t.is_code_mixed, t.is_speaker_overlappings_exist, 
                     t.is_audio_suitable, t.admin, t.validated_at, t.created_at,
-                    a.audio_id, a.audio_filename, a.google_transcription, 
+                    a.audio_id, a.audio_filename, a.google_transcription, a.speak_transcription,
                     a.transcription_count, a.leased_until
                 FROM "Transcriptions" t
                 JOIN "Audio" a ON t.audio_id = a.audio_id
@@ -451,15 +490,16 @@ class TranscriptionService:
                         'is_audio_suitable': row[7],
                         'admin': row[8],
                         'validated_at': row[9],
-                        'created_at': row[10]
+                        'created_at': row[10],
                     }
                     
                     audio_data = {
                         'audio_id': row[11],
                         'audio_filename': row[12],
                         'google_transcription': row[13],
-                        'transcription_count': row[14],
-                        'leased_until': row[15]
+                        'speak_transcription': row[14],
+                        'transcription_count': row[15],
+                        'leased_until': row[16]
                     }
                     
                     # Create minimal objects for compatibility
@@ -641,4 +681,165 @@ class TranscriptionService:
         except Exception as e:
             await db.rollback()
             logger.error(f"Error validating transcription {trans_id}: {e}")
+            raise
+
+
+class YouTubeVideoService:
+    """Service for YouTube video validation operations."""
+
+    @staticmethod
+    async def get_next_youtube_video_for_validation(db: AsyncSession) -> Optional[dict]:
+        """
+        Get the next unvalidated YouTube video with highest audio clip count.
+        
+        Uses the youtube_video_with_audio_count view to fetch videos ordered by
+        audio_clip_count descending, filtering for unvalidated videos.
+        
+        Audio clip limit logic:
+        - Calculate 10% of total audio clips
+        - If 10% > 10, limit to 10 audio clips
+        - If 10% < 1, return all existing audio clips
+        - Otherwise, return 10% of audio clips (rounded)
+        
+        Returns:
+            dict with video data and audio clips, or None if no videos available
+        """
+        try:
+            # Query the view to get the next unvalidated video with most audio clips
+            # Note: View already filters for is_validated IS NULL and no transcribed audios
+            video_query = text("""
+                SELECT id, video_id, title, description, duration, uploader, 
+                       upload_date, thumbnail, url, domain, is_validated, 
+                       created_at, audio_clip_count
+                FROM youtube_video_with_audio_count
+                ORDER BY audio_clip_count DESC, id ASC
+                LIMIT 1;
+            """)
+            
+            result = await db.execute(video_query)
+            video_row = result.fetchone()
+            
+            if not video_row:
+                logger.info("No YouTube videos available for validation")
+                return None
+            
+            video_data = {
+                'id': video_row[0],
+                'video_id': video_row[1],
+                'title': video_row[2],
+                'description': video_row[3],
+                'duration': video_row[4],
+                'uploader': video_row[5],
+                'upload_date': video_row[6],
+                'thumbnail': video_row[7],
+                'url': video_row[8],
+                'domain': video_row[9],
+                'is_validated': video_row[10],
+                'created_at': video_row[11],
+                'audio_clip_count': video_row[12],
+                'audio_clips': []
+            }
+            
+            # Calculate audio limit based on 10% rule
+            total_audio_count = video_data['audio_clip_count']
+            ten_percent = total_audio_count * 0.10
+            
+            if total_audio_count <= 10:
+                # If total is 10 or less, return all existing audios
+                audio_limit = total_audio_count
+            else:
+                if ten_percent > 10:
+                    # If 10% is more than 10, cap at 10
+                    audio_limit = 10
+                else:
+                    # Otherwise, use 10% (rounded to nearest integer, minimum 1)
+                    audio_limit = max(1, round(ten_percent))
+            
+            logger.info(
+                f"Video {video_data['video_id']}: total={total_audio_count}, "
+                f"10%={ten_percent:.1f}, fetching={audio_limit} audio clips"
+            )
+            
+            # Fetch audio clips for this video with calculated limit
+            audio_query = text("""
+                SELECT audio_id, audio_filename, google_transcription
+                FROM "Audio"
+                WHERE youtube_video_id = :video_id
+                LIMIT :limit;
+            """)
+            
+            audio_result = await db.execute(audio_query, {
+                "video_id": video_data['id'],
+                "limit": audio_limit
+            })
+            audio_rows = audio_result.fetchall()
+            
+            video_data['audio_clips'] = [
+                {
+                    'audio_id': row[0],
+                    'audio_filename': row[1],
+                    'google_transcription': row[2]
+                }
+                for row in audio_rows
+            ]
+            
+            logger.info(
+                f"Retrieved YouTube video {video_data['video_id']} with "
+                f"{len(video_data['audio_clips'])} audio clips for validation"
+            )
+            
+            return video_data
+            
+        except Exception as e:
+            logger.error(f"Error fetching YouTube video for validation: {e}")
+            raise
+
+    @staticmethod
+    async def update_youtube_video_validation_status(
+        db: AsyncSession, 
+        video_id: UUID, 
+        is_validated: bool
+    ) -> Optional[dict]:
+        """
+        Update the validation status of a YouTube video.
+        
+        Args:
+            db: Database session
+            video_id: UUID of the YouTube video
+            is_validated: True if validated, False if marked as invalid
+            
+        Returns:
+            dict with updated video info, or None if video not found
+        """
+        try:
+            query = text("""
+                UPDATE "YouTube_Video"
+                SET is_validated = :is_validated
+                WHERE id = :video_id
+                RETURNING id, video_id, is_validated;
+            """)
+            
+            result = await db.execute(query, {
+                "video_id": video_id,
+                "is_validated": is_validated
+            })
+            row = result.fetchone()
+            
+            if row:
+                await db.commit()
+                status_text = "validated" if is_validated else "invalidated"
+                logger.info(f"YouTube video {row[1]} marked as {status_text}")
+                return {
+                    'id': row[0],
+                    'video_id': row[1],
+                    'is_validated': row[2]
+                }
+            
+            await db.rollback()
+            logger.warning(f"YouTube video with id {video_id} not found")
+            return None
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error updating YouTube video validation status: {e}")
             raise

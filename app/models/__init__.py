@@ -39,6 +39,7 @@ class Audio(Base):
     audio_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     audio_filename = Column(Text, nullable=False, unique=True, index=True)
     google_transcription = Column(Text, nullable=True)
+    speak_transcription = Column(Text, nullable=True)
     transcription_count = Column(Integer, default=0, nullable=False, index=True)
     leased_until = Column(DateTime(timezone=True), nullable=True, index=True)
     start_time = Column(Time, nullable=True)
@@ -46,6 +47,7 @@ class Audio(Base):
     padded_duration = Column(Float, nullable=True)
     youtube_video_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    is_best_google = Column(Boolean, nullable=True, index=True)  # True if user copied Google ref, False if SPEAK
     
     # Relationships
     transcriptions = relationship("Transcriptions", back_populates="audio", cascade="all, delete-orphan")

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sinhala-asr-transcription-service"
+version = "1.0.0"
+description = "Backend API service for managing Sinhala ASR transcription data"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "python-multipart",
+    "jinja2",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "psycopg2-binary",
+    "google-cloud-storage",
+    "google-auth",
+    "python-dotenv",
+    "pandas",
+    "gunicorn",
+]
+
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[tool.vercel.scripts]
+build = "python build.py"

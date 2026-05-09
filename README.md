@@ -61,7 +61,7 @@ This service facilitates the creation of high-quality Sinhala ASR datasets by:
 ```
 
 **Technology Stack:**
-- **Backend**: FastAPI with async support (Python 3.8+)
+- **Backend**: FastAPI with async support (Python 3.11+)
 - **Database**: PostgreSQL with async SQLAlchemy and asyncpg driver
 - **Storage**: Google Cloud Storage for audio file hosting
 - **Authentication**: Google Cloud service account or ADC

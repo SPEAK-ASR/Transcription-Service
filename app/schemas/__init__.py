@@ -24,7 +24,9 @@ class AudioResponse(BaseModel):
     audio_id: UUID
     audio_filename: str
     google_transcription: Optional[str] = None
+    speak_transcription: Optional[str] = None
     transcription_count: int = 0
+    is_best_google: Optional[bool] = None
     gcs_signed_url: str  # Signed URL for direct access
     
     model_config = ConfigDict(from_attributes=True)
@@ -43,6 +45,10 @@ class TranscriptionCreate(BaseModel):
     is_audio_suitable: Optional[bool] = Field(default=True, description="Whether the audio is suitable for transcription")
     admin: Optional[AdminName] = Field(default=None, description="Admin attribution if submitted by an admin")
     validated_at: Optional[datetime] = Field(default=None, description="Timestamp when validated (set automatically for admin submissions)")
+    is_best_google: Optional[bool] = Field(
+        default=None,
+        description="True if user copied Google reference, False if SPEAK, null if manual or identical refs",
+    )
     
     @field_validator("transcription")
     @classmethod
@@ -229,4 +235,58 @@ class AdminLeaderboardResponse(BaseModel):
     range: Literal["all", "week", "month"] = Field(..., description="Requested time range")
     total: int = Field(..., description="Total transcription count for the returned admins")
     leaders: List[AdminLeaderboardEntry] = Field(default_factory=list, description="Ranked admin rows")
+
+
+# YouTube Video Validation Schemas
+class AudioClipForValidation(BaseModel):
+    """Audio clip data for YouTube video validation."""
+    audio_id: UUID
+    audio_filename: str
+    google_transcription: Optional[str] = None
+    gcs_signed_url: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class YouTubeVideoWithAudioClips(BaseModel):
+    """YouTube video with its audio clips for validation."""
+    id: UUID
+    video_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    duration: Optional[str] = None
+    uploader: Optional[str] = None
+    upload_date: Optional[str] = None
+    thumbnail: Optional[str] = None
+    url: Optional[str] = None
+    domain: Optional[str] = None
+    is_validated: Optional[bool] = None
+    created_at: Optional[datetime] = None
+    audio_clip_count: int
+    audio_clips: List[AudioClipForValidation] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("duration", "upload_date", mode="before")
+    @classmethod
+    def convert_to_string(cls, v):
+        """Convert non-string values to string."""
+        if v is None:
+            return None
+        return str(v)
+
+
+class YouTubeVideoValidationStatusUpdate(BaseModel):
+    """Request model for updating YouTube video validation status."""
+    is_validated: bool = Field(..., description="True if validated, False if marked as invalid")
+
+
+class YouTubeVideoValidationResponse(BaseModel):
+    """Response model after updating YouTube video validation status."""
+    id: UUID
+    video_id: str
+    is_validated: bool
+    message: str
+
+    model_config = ConfigDict(from_attributes=True)
 
