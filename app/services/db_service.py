@@ -742,12 +742,12 @@ class YouTubeVideoService:
             
             # Calculate audio limit based on 10% rule
             total_audio_count = video_data['audio_clip_count']
+            ten_percent = total_audio_count * 0.10
             
             if total_audio_count <= 10:
                 # If total is 10 or less, return all existing audios
                 audio_limit = total_audio_count
             else:
-                ten_percent = total_audio_count * 0.10
                 if ten_percent > 10:
                     # If 10% is more than 10, cap at 10
                     audio_limit = 10
