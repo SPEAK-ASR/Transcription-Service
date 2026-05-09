@@ -33,8 +33,8 @@ Ensure your repository has the following files:
 ✅ **Recommended:**
 
 - `.vercelignore` - Files to exclude from deployment
-- `vercel.json` - Vercel configuration (included)
 - `.env.example` - Environment variable template
+- `vercel.json` - Optional only if you want to override or supplement the existing `[tool.vercel]` configuration in `pyproject.toml`
 
 ## Step 2: Environment Variables Setup
 
