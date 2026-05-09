@@ -30,11 +30,20 @@ echo -e "${YELLOW}Checking prerequisites...${NC}"
 
 if ! command_exists python3; then
     echo -e "${RED}Error: Python 3 is not installed${NC}"
-    echo -e "${YELLOW}Please install Python 3.8 or higher${NC}"
+    echo -e "${YELLOW}Please install Python 3.11 or higher${NC}"
     exit 1
 fi
 
 PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f1)
+PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]; }; then
+    echo -e "${RED}Error: Python $PYTHON_VERSION is not supported${NC}"
+    echo -e "${YELLOW}Please install Python 3.11 or higher${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Python $PYTHON_VERSION found${NC}"
 
 # Check for pip
