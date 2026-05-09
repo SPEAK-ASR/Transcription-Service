@@ -409,6 +409,7 @@ class TranscriptionService:
                         f"Updated Audio {transcription_data.audio_id} is_best_google to {is_best_google_value}"
                     )
             except Exception as e:
+                await db.rollback()
                 logger.error(f"Error updating is_best_google on Audio record: {e}")
                 # Don't fail the transcription creation if this update fails
         
