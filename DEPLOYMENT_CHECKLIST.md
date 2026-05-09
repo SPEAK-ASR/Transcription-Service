@@ -9,7 +9,7 @@ Use this checklist to verify your application is ready for Vercel deployment.
 - [x] `app/main.py` contains FastAPI `app` instance
 - [x] `pyproject.toml` includes `[tool.vercel]` section with entrypoint
 - [x] `build.py` exists and runs without errors
-- [x] `vercel.json` is configured for the project
+- [x] Vercel configuration is defined in `pyproject.toml` (`vercel.json` is not required for this project)
 - [x] `.vercelignore` excludes unnecessary files
 - [x] All `__init__.py` files exist in app packages
 
