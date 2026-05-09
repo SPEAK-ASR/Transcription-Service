@@ -1,0 +1,64 @@
+# Python environment
+.venv
+venv
+env
+.env
+.env.local
+.env.*.local
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+test_*.py
+*_test.py
+
+# Logs
+logs
+*.log
+*.txt
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Development
+start.sh
+install.sh
+scripts
+.github
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# OS
+.DS_Store
+Thumbs.db
