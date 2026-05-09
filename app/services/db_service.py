@@ -712,6 +712,7 @@ class YouTubeVideoService:
                        upload_date, thumbnail, url, domain, is_validated, 
                        created_at, audio_clip_count
                 FROM youtube_video_with_audio_count
+                ORDER BY audio_clip_count DESC, id ASC
                 LIMIT 1;
             """)
             
