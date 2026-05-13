@@ -152,3 +152,5 @@ service-account-key.json
 # OS
 .DS_Store
 Thumbs.db
+
+logs/
