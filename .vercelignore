@@ -37,6 +37,7 @@ test_*.py
 logs
 *.log
 *.txt
+!requirements.txt
 
 # Documentation
 docs

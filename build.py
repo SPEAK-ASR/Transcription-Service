@@ -54,23 +54,34 @@ def main():
         logger.info("Checking required environment variables...")
         required_vars = ["DATABASE_URL", "GCS_BUCKET_NAME"]
         missing_vars = []
+        unverifiable_vars = []
+        
+        from app.core.config import settings
         
         for var in required_vars:
             try:
-                from app.core.config import settings
                 value = getattr(settings, var, None)
                 if not value:
                     missing_vars.append(var)
                 else:
                     logger.info(f"✓ {var} is configured")
             except Exception as e:
-                logger.warning(f"Could not verify {var}: {e}")
+                unverifiable_vars.append(var)
+                logger.error(f"Could not verify required environment variable {var}: {e}")
         
         if missing_vars:
-            logger.warning(
-                f"Missing environment variables: {', '.join(missing_vars)}. "
-                f"Ensure these are set in Vercel project settings."
+            logger.error(
+                f"Missing required environment variables: {', '.join(missing_vars)}. "
+                f"Set these in Vercel project settings before deploying."
             )
+        
+        if unverifiable_vars:
+            logger.error(
+                f"Could not verify required environment variables: {', '.join(unverifiable_vars)}."
+            )
+        
+        if missing_vars or unverifiable_vars:
+            return 1
         
         logger.info("✓ Build process completed successfully")
         return 0
