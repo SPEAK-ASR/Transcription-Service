@@ -163,10 +163,10 @@ chmod +x start.sh
 ```
 
 The backend API service will start with auto-reload enabled and will be available at:
-- **REST API Base**: http://localhost:5000/api/v1
-- **API Documentation**: http://localhost:5000/docs
-- **ReDoc Documentation**: http://localhost:5000/redoc
-- **Health Check**: http://localhost:5000/health
+- **REST API Base**: http://localhost:5002/api/v1
+- **API Documentation**: http://localhost:5002/docs
+- **ReDoc Documentation**: http://localhost:5002/redoc
+- **Health Check**: http://localhost:5002/health
 
 > **Note**: This is a backend-only service. The frontend UI is provided by the separate SPEAK-Client application. Configure the client to point to this API base URL.
 
@@ -321,7 +321,7 @@ The SPEAK-Client application:
 - Displays admin leaderboards and statistics
 - Handles audio playback and user interactions
 
-To connect the client to this backend, configure the client's API base URL to point to this service's endpoint (default: `http://localhost:5000/api/v1`).
+To connect the client to this backend, configure the client's API base URL to point to this service's endpoint (default: `http://localhost:5002/api/v1`).
 
 ## 🚀 Deployment
 

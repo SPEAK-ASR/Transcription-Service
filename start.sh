@@ -61,10 +61,10 @@ echo -e "${GREEN}✓ Backend API service started${NC}\n"
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  Backend API Service${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${GREEN}API Base URL:${NC}           http://localhost:5000/api/v1"
-echo -e "${GREEN}API Documentation:${NC}      http://localhost:5000/docs"
-echo -e "${GREEN}ReDoc:${NC}                  http://localhost:5000/redoc"
-echo -e "${GREEN}Health Check:${NC}           http://localhost:5000/health"
+echo -e "${GREEN}API Base URL:${NC}           http://localhost:5002/api/v1"
+echo -e "${GREEN}API Documentation:${NC}      http://localhost:5002/docs"
+echo -e "${GREEN}ReDoc:${NC}                  http://localhost:5002/redoc"
+echo -e "${GREEN}Health Check:${NC}           http://localhost:5002/health"
 echo -e "${GREEN}Server logs:${NC}            $LOG_DIR/server.log"
 echo -e "${BLUE}========================================${NC}"
 echo -e "${YELLOW}Note: This is a backend-only service.${NC}"
@@ -73,7 +73,7 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "\n${YELLOW}Press Ctrl+C to stop the service${NC}\n"
 
 # Run uvicorn with live output
-uvicorn app.main:app --reload --host 0.0.0.0 --port 5000 --log-level info 2>&1 | tee "$LOG_DIR/server.log" &
+uvicorn app.main:app --reload --host 0.0.0.0 --port 5002 --log-level info 2>&1 | tee "$LOG_DIR/server.log" &
 SERVER_PID=$!
 
 # Wait for the process

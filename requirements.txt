@@ -18,8 +18,5 @@ google-auth
 # Environment management
 python-dotenv
 
-# CSV and file processing
-pandas
-
 # Optional: For production deployment
 gunicorn
